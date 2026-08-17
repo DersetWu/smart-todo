@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:transparent;overflow:hidden}
+    .card{position:relative;background:#1e293b;color:#f1f5f9;border-radius:12px;padding:14px 18px;box-shadow:0 8px 32px rgba(0,0,0,.4);border:1px solid #334155;margin:4px;overflow:hidden}
+    h3{position:relative;z-index:1;font-size:14px;margin-bottom:4px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    p{position:relative;z-index:1;font-size:12px;color:#94a3b8;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    button{position:relative;z-index:1;padding:5px 14px;border:0;border-radius:6px;font-size:12px;cursor:pointer;background:#334155;color:#cbd5e1}
+    button:hover{background:#475569;color:#fff}
+    .card.bubble{border:0;border-radius:30px;padding:22px 24px 18px;text-align:center}
+    .card.bubble::before,.card.bubble::after{content:"";position:absolute;border-radius:999px;opacity:.58;pointer-events:none}
+    .card.bubble::before{width:92px;height:92px;right:-22px;top:-30px}
+    .card.bubble::after{width:48px;height:48px;left:24px;bottom:18px}
+    .card.bubble h3{font-size:16px;margin-bottom:12px}
+    .card.bubble button{border-radius:999px;padding:6px 18px}
+    .card.pink-bubble{background:linear-gradient(135deg,#fff1f7,#ffd6e8);color:#831843;box-shadow:0 18px 48px rgba(244,114,182,.38)}
+    .card.pink-bubble h3{color:#831843}.card.pink-bubble p{color:#be185d}.card.pink-bubble button{background:#f472b6;color:#fff}
+    .card.pink-bubble::before{background:#f9a8d4}.card.pink-bubble::after{background:#fbcfe8}
+    .card.lavender-bubble{background:linear-gradient(135deg,#f5f0ff,#ddd6fe);color:#4c1d95;box-shadow:0 18px 48px rgba(167,139,250,.38)}
+    .card.lavender-bubble h3{color:#4c1d95}.card.lavender-bubble p{color:#6d28d9}.card.lavender-bubble button{background:#a78bfa;color:#fff}
+    .card.lavender-bubble::before{background:#c4b5fd}.card.lavender-bubble::after{background:#ede9fe}
+  </style>
+</head>
+<body>
+  <div class="card"><h3 id="title"></h3><p id="body"></p><button id="close" type="button">关闭</button></div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const style = params.get('style') || 'default';
+    const card = document.querySelector('.card');
+    if (style === 'pink-bubble' || style === 'lavender-bubble') card.classList.add('bubble', style);
+    document.getElementById('title').textContent = `🔔 ${params.get('title') || '到时间了'}`;
+    const body = params.get('body') || '';
+    const bodyNode = document.getElementById('body');
+    bodyNode.textContent = body;
+    bodyNode.hidden = !body;
+    document.getElementById('close').addEventListener('click', () => window.close());
+    setTimeout(() => window.close(), 30000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+node_modules/
+dist/
+dist-current/
+dist-verified/
+*.exe
+*.log
+
+# Local secrets and environment-specific settings
+.env
+.env.*
+!.env.example
+ai-config.json
+.npmrc
+
+# Local caches and OS metadata
+.package-verify/
+.review-baseline/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,3407 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src https:; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#6366f1">
+<meta name="description" content="智能待办事项 — 输入文字，自动分类、提取日期、给出建议">
+<title>Smart Todo — 智能待办</title>
+<link rel="manifest" href="manifest.json">
+<style>
+/* ================================================================
+   CSS Variables & Theme
+   ================================================================ */
+:root {
+  --bg:            #f0f2f5;
+  --card-bg:       #ffffff;
+  --card-hover:    #f9fafb;
+  --text:          #1a1a2e;
+  --text-secondary:#6b7280;
+  --text-muted:    #9ca3af;
+  --border:        #e5e7eb;
+  --accent:        #6366f1;
+  --accent-hover:  #4f46e5;
+  --accent-soft:   rgba(99,102,241,.08);
+  --danger:        #ef4444;
+  --danger-soft:   rgba(239,68,68,.08);
+  --success:       #10b981;
+  --success-soft:  rgba(16,185,129,.1);
+  --shadow:        0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:     0 4px 6px -1px rgba(0,0,0,.06), 0 2px 4px rgba(0,0,0,.04);
+  --shadow-lg:     0 10px 15px -3px rgba(0,0,0,.06), 0 4px 6px -2px rgba(0,0,0,.04);
+  --radius:        14px;
+  --radius-sm:     10px;
+  --transition:    0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Category colors */
+  --quick:         #3b82f6;
+  --quick-soft:    rgba(59,130,246,.08);
+  --quick-border:  rgba(59,130,246,.25);
+  --planning:      #10b981;
+  --planning-soft: rgba(16,185,129,.08);
+  --planning-border:rgba(16,185,129,.25);
+  --system:        #8b5cf6;
+  --system-soft:   rgba(139,92,246,.08);
+  --system-border: rgba(139,92,246,.25);
+}
+
+[data-theme="dark"] {
+  --bg:            #0f172a;
+  --card-bg:       #1e293b;
+  --card-hover:    #223044;
+  --text:          #f1f5f9;
+  --text-secondary:#94a3b8;
+  --text-muted:    #64748b;
+  --border:        #334155;
+  --shadow:        0 1px 3px rgba(0,0,0,.3);
+  --shadow-md:     0 4px 6px rgba(0,0,0,.3);
+  --shadow-lg:     0 10px 15px rgba(0,0,0,.4);
+  --accent-soft:   rgba(99,102,241,.15);
+  --danger-soft:   rgba(239,68,68,.12);
+  --success-soft:  rgba(16,185,129,.12);
+  --quick-soft:    rgba(59,130,246,.12);
+  --planning-soft: rgba(16,185,129,.1);
+  --system-soft:   rgba(139,92,246,.12);
+}
+
+/* ================================================================
+   Reset & Base
+   ================================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", "PingFang SC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  padding: 32px 16px 80px;
+  transition: background var(--transition), color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app {
+  width: 100%;
+  max-width: 560px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ================================================================
+   Header
+   ================================================================ */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.header-left { display: flex; align-items: center; gap: 10px; }
+
+.logo {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-actions { display: flex; gap: 6px; }
+
+.icon-btn {
+  width: 38px; height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--card-bg);
+  cursor: pointer;
+  font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+  color: var(--text);
+  position: relative;
+}
+.icon-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+.icon-btn:active { transform: scale(0.94); }
+
+/* ================================================================
+   Stats Strip
+   ================================================================ */
+.stats-strip {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.stat-pill {
+  flex: 1;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+}
+.stat-pill .num { font-size: 1.3rem; font-weight: 700; display: block; color: var(--text); }
+.stat-pill.quick  .num { color: var(--quick); }
+.stat-pill.planning .num { color: var(--planning); }
+.stat-pill.system .num { color: var(--system); }
+
+/* ================================================================
+   Smart Input
+   ================================================================ */
+.input-section { margin-bottom: 18px; }
+
+.todo-form {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  border: 1.5px solid var(--border);
+  display: flex;
+  gap: 0;
+  transition: all var(--transition);
+  overflow: hidden;
+}
+.todo-form:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-lg), 0 0 0 4px var(--accent-soft);
+}
+
+.todo-form input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 0.97rem;
+  padding: 14px 18px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  min-width: 0;
+}
+.todo-form input::placeholder { color: var(--text-muted); }
+
+.submit-btn {
+  padding: 14px 22px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+  font-family: inherit;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+.submit-btn:hover { background: var(--accent-hover); }
+.submit-btn:active { background: #4338ca; }
+
+/* Analysis preview */
+.analysis-preview {
+  margin-top: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  display: none;
+  align-items: center;
+  gap: 10px;
+  animation: fadeIn 0.25s ease;
+}
+.analysis-preview.show { display: flex; }
+.analysis-preview .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.analysis-preview .dot.quick    { background: var(--quick); }
+.analysis-preview .dot.planning { background: var(--planning); }
+.analysis-preview .dot.system   { background: var(--system); }
+.analysis-preview .label {
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+.analysis-preview .label.quick    { color: var(--quick);    background: var(--quick-soft); }
+.analysis-preview .label.planning { color: var(--planning); background: var(--planning-soft); }
+.analysis-preview .label.system   { color: var(--system);   background: var(--system-soft); }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ================================================================
+   Filter Tabs
+   ================================================================ */
+.filters {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  background: var(--card-bg);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+.filter-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.83rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+.filter-btn:hover { color: var(--text); }
+.filter-btn.active { background: var(--accent); color: white; }
+
+/* ================================================================
+   Task List
+   ================================================================ */
+.todo-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ================================================================
+   Task Card
+   ================================================================ */
+.todo-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  transition: all 0.25s ease;
+  animation: cardIn 0.3s ease;
+  overflow: hidden;
+}
+.todo-card:hover { box-shadow: var(--shadow-md); }
+.todo-card.removing { animation: cardOut 0.25s ease forwards; }
+.todo-card.done { opacity: 0.7; }
+.todo-card.done .task-text { text-decoration: line-through; color: var(--text-muted); }
+
+@keyframes cardIn  { from { opacity: 0; transform: translateY(-8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes cardOut { to   { opacity: 0; transform: translateX(40px) scale(0.96); } }
+
+/* --- Card main row --- */
+.card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+/* Checkbox */
+.checkbox {
+  width: 22px; height: 22px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+  position: relative;
+}
+.checkbox:hover { border-color: var(--accent); }
+.todo-card.done .checkbox { background: var(--success); border-color: var(--success); }
+.checkbox::after {
+  content: ""; position: absolute;
+  width: 5px; height: 9px;
+  border: solid white; border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.15s ease;
+  margin-top: -1px;
+}
+.todo-card.done .checkbox::after { transform: rotate(45deg) scale(1); }
+
+/* Card body */
+.card-body { flex: 1; min-width: 0; }
+
+.task-text {
+  font-size: 0.93rem;
+  line-height: 1.5;
+  word-break: break-word;
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 3px;
+  outline: none;
+  transition: background 0.1s;
+}
+.task-text:focus { background: var(--accent-soft); }
+
+/* Meta row */
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.meta-tag {
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 100px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Category badge */
+.cat-badge {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.cat-badge.quick    { color: var(--quick);    background: var(--quick-soft); }
+.cat-badge.planning { color: var(--planning); background: var(--planning-soft); }
+.cat-badge.system   { color: var(--system);   background: var(--system-soft); }
+
+/* Priority */
+.pri-high   { color: #ef4444; background: rgba(239,68,68,.1); }
+.pri-medium { color: #f59e0b; background: rgba(245,158,11,.1); }
+.pri-low    { color: #6b7280; background: rgba(107,114,128,.1); }
+
+/* Due date */
+.due-tag {
+  color: var(--text-secondary);
+  background: var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.due-tag.overdue { color: #ef4444; background: rgba(239,68,68,.1); }
+
+/* Time block */
+.time-tag { color: #6366f1; background: var(--accent-soft); }
+
+/* Tag tag */
+.tag-tag { color: var(--text-secondary); background: var(--border); }
+
+/* --- Suggestion card --- */
+.suggestion-box {
+  margin: 0 16px 12px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(99,102,241,.15);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  display: none;
+  animation: fadeIn 0.2s ease;
+}
+.suggestion-box.show { display: block; }
+.suggestion-box .sug-icon { margin-right: 4px; }
+.suggestion-box .sug-text { line-height: 1.5; }
+.suggestion-box .sug-actions { margin-top: 8px; display: flex; gap: 6px; }
+
+.sug-btn {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 100px;
+  font-size: 0.77rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+.sug-accept { background: var(--accent); color: white; }
+.sug-accept:hover { background: var(--accent-hover); }
+.sug-dismiss { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+.sug-dismiss:hover { color: var(--text); border-color: var(--text-muted); }
+
+/* --- Sub-tasks --- */
+.subtasks {
+  margin: 0 16px 10px;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+}
+.subtask-item.done .subtask-text { text-decoration: line-through; color: var(--text-muted); }
+.sub-check {
+  width: 16px; height: 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+}
+.subtask-item.done .sub-check { background: var(--success); border-color: var(--success); }
+.sub-check::after {
+  content: ""; width: 4px; height: 7px;
+  border: solid white; border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.12s ease;
+  margin-top: -1px;
+}
+.subtask-item.done .sub-check::after { transform: rotate(45deg) scale(1); }
+
+/* --- Confidence toggle --- */
+.confidence-toggle {
+  display: flex;
+  gap: 4px;
+  margin: 0 16px 10px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  align-items: center;
+  display: none;
+}
+.confidence-toggle.show { display: flex; }
+.confidence-toggle span { margin-right: 2px; }
+.conf-toggle-btn {
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  background: var(--card-bg);
+  cursor: pointer;
+  font-size: 0.73rem;
+  font-family: inherit;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+}
+.conf-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+.conf-toggle-btn.selected { background: var(--accent); color: white; border-color: var(--accent); }
+
+/* --- Delete button --- */
+.delete-card-btn {
+  width: 30px; height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 1rem;
+  color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+  opacity: 0;
+  margin-top: -1px;
+}
+.todo-card:hover .delete-card-btn { opacity: 1; }
+.delete-card-btn:hover { background: var(--danger-soft); color: var(--danger); }
+
+/* ================================================================
+   Empty state
+   ================================================================ */
+.empty-state {
+  text-align: center;
+  padding: 52px 20px;
+  color: var(--text-muted);
+}
+.empty-state .empty-icon { font-size: 3.2rem; margin-bottom: 10px; opacity: 0.5; display: block; }
+.empty-state .empty-title { font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+.empty-state .empty-desc { font-size: 0.87rem; }
+
+/* ================================================================
+   Footer
+   ================================================================ */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 0 4px;
+  font-size: 0.83rem;
+  color: var(--text-muted);
+}
+.clear-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.83rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+.clear-btn:hover { color: var(--danger); background: var(--danger-soft); }
+
+/* ================================================================
+   Toast
+   ================================================================ */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.toast {
+  background: #1e293b;
+  color: #f1f5f9;
+  padding: 10px 20px;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 2s forwards;
+  box-shadow: 0 10px 25px rgba(0,0,0,.25);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.toast.test-result {
+  white-space: normal;
+  text-align: center;
+  max-width: min(90vw, 620px);
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 7s forwards;
+}
+@keyframes toastIn  { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes toastOut { from { opacity: 1; transform: translateY(0);  } to { opacity: 0; transform: translateY(-8px); } }
+
+/* ================================================================
+   Install Prompt
+   ================================================================ */
+.install-banner {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 14px 16px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  animation: fadeIn 0.3s ease;
+}
+.install-banner.show { display: flex; }
+.install-banner .install-icon { font-size: 1.6rem; }
+.install-banner .install-text { flex: 1; font-size: 0.85rem; color: var(--text-secondary); }
+.install-banner .install-text strong { color: var(--text); }
+.install-btn {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 100px;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  font-size: 0.83rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.install-btn:hover { background: var(--accent-hover); }
+.install-dismiss {
+  width: 28px; height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  border-radius: 50%;
+}
+.install-dismiss:hover { background: var(--border); }
+
+/* ================================================================
+   Settings Modal
+   ================================================================ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,.4); display: none;
+  align-items: center; justify-content: center;
+  padding: 16px;
+}
+.modal-overlay.show { display: flex; }
+.modal-overlay.show .modal-box { animation: modalIn 0.25s ease; }
+@keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+.modal-box {
+  background: var(--card-bg); border-radius: var(--radius);
+  box-shadow: 0 20px 60px rgba(0,0,0,.25); width: 100%; max-width: 420px;
+  padding: 24px; color: var(--text);
+}
+.modal-box h2 { font-size: 1.15rem; margin-bottom: 18px; }
+.modal-row { margin-bottom: 14px; }
+.modal-row label { display: block; font-size: 0.82rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; }
+
+.modal-row input[type="text"],
+.modal-row input[type="password"],
+.modal-row select {
+  width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 0.9rem; background: var(--bg);
+  color: var(--text); font-family: inherit; outline: none;
+  transition: border var(--transition);
+}
+.modal-row input:focus, .modal-row select:focus { border-color: var(--accent); }
+
+.toggle-row { display: flex; align-items: center; justify-content: space-between; }
+.toggle-switch {
+  position: relative; width: 48px; height: 28px; flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0; background: var(--border);
+  border-radius: 28px; cursor: pointer; transition: background var(--transition);
+}
+.toggle-slider::before {
+  content: ""; position: absolute; width: 22px; height: 22px;
+  left: 3px; bottom: 3px; background: white; border-radius: 50%;
+  transition: transform var(--transition);
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+.ai-config-section { display: none; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 8px; }
+.ai-config-section.show { display: block; }
+
+.modal-actions { display: flex; gap: 8px; margin-top: 18px; }
+.modal-actions button {
+  flex: 1; padding: 10px; border: none; border-radius: 8px;
+  font-size: 0.88rem; font-weight: 600; cursor: pointer; font-family: inherit;
+  transition: all var(--transition);
+}
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-secondary { background: var(--border); color: var(--text); }
+.btn-secondary:hover { background: var(--text-muted); color: white; }
+.btn-test { background: var(--success-soft); color: var(--success); font-size: 0.8rem; }
+.btn-test:hover { background: var(--success); color: white; }
+.status-msg { font-size: 0.78rem; margin-top: 4px; min-height: 1.2em; }
+.status-msg.ok { color: var(--success); }
+.status-msg.err { color: var(--danger); }
+
+.reminder-popup.bubble-style {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-radius: 28px;
+  text-align: center;
+}
+.reminder-popup.bubble-style::before,
+.reminder-popup.bubble-style::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.reminder-popup.bubble-style::before {
+  width: 88px;
+  height: 88px;
+  right: -24px;
+  top: -28px;
+}
+.reminder-popup.bubble-style::after {
+  width: 56px;
+  height: 56px;
+  left: 18px;
+  bottom: 14px;
+}
+.reminder-popup.bubble-pink {
+  background: linear-gradient(135deg, #fff1f7, #ffd6e8);
+  color: #831843;
+  box-shadow: 0 22px 70px rgba(244, 114, 182, 0.35);
+}
+.reminder-popup.bubble-pink::before { background: #f9a8d4; }
+.reminder-popup.bubble-pink::after { background: #fbcfe8; }
+.reminder-popup.bubble-lavender {
+  background: linear-gradient(135deg, #f5f0ff, #ddd6fe);
+  color: #4c1d95;
+  box-shadow: 0 22px 70px rgba(167, 139, 250, 0.35);
+}
+.reminder-popup.bubble-lavender::before { background: #c4b5fd; }
+.reminder-popup.bubble-lavender::after { background: #ede9fe; }
+.reminder-popup.bubble-style h2,
+.reminder-popup.bubble-style #reminderText,
+.reminder-popup.bubble-style #reminderMeta,
+.reminder-popup.bubble-style .modal-actions {
+  position: relative;
+  z-index: 1;
+}
+
+/* ================================================================
+   Responsive
+   ================================================================ */
+@media (max-width: 480px) {
+  body { padding: 16px 10px 80px; }
+  .header h1 { font-size: 1.3rem; }
+  .stats-strip { gap: 4px; }
+  .stat-pill { padding: 8px 6px; font-size: 0.7rem; }
+  .stat-pill .num { font-size: 1.1rem; }
+  .todo-form input { padding: 12px 14px; font-size: 0.9rem; }
+  .submit-btn { padding: 12px 16px; font-size: 0.85rem; }
+  .filter-btn { font-size: 0.76rem; padding: 7px 6px; }
+  .card-main { padding: 12px; }
+  .delete-card-btn { opacity: 1; }
+  .task-text { font-size: 0.87rem; }
+  .suggestion-box { margin: 0 10px 10px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <span class="logo">🧠</span>
+      <h1>Smart Todo v3</h1>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="settingsBtn" title="设置">⚙️</button>
+      <button class="icon-btn" id="themeBtn" title="切换深色/浅色模式">🌙</button>
+      <button class="icon-btn" id="testBtn" title="运行分类测试" style="font-size:0.85rem;">🧪</button>
+    </div>
+  </div>
+
+  <!-- Install banner -->
+  <div class="install-banner" id="installBanner">
+    <span class="install-icon">📲</span>
+    <span class="install-text"><strong>安装到桌面</strong> — 像 App 一样使用，支持离线访问</span>
+    <button class="install-btn" id="installBtn">安装</button>
+    <button class="install-dismiss" id="installDismiss">✕</button>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-box">
+      <h2>⚙️ 设置</h2>
+      <div class="modal-row">
+        <label>提醒弹框样式</label>
+        <select id="reminderStyleSelect">
+          <option value="default">默认样式</option>
+          <option value="pink-bubble">粉色泡泡</option>
+          <option value="lavender-bubble">香芋紫泡泡</option>
+        </select>
+      </div>
+      <div class="modal-row toggle-row">
+        <label>AI 增强分类</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="aiToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="ai-config-section" id="aiConfigSection">
+        <div class="modal-row">
+          <label>API 服务商</label>
+          <select id="aiProvider">
+            <option value="deepseek">DeepSeek（免费额度）</option>
+            <option value="openai">OpenAI 兼容</option>
+          </select>
+        </div>
+        <div class="modal-row">
+          <label>API Key</label>
+          <input type="password" id="aiKey" placeholder="sk-...">
+        </div>
+        <div class="modal-row">
+          <label>API 地址</label>
+          <input type="text" id="aiEndpoint" placeholder="https://api.deepseek.com/v1/chat/completions">
+        </div>
+        <div class="modal-row">
+          <label>模型</label>
+          <input type="text" id="aiModel" placeholder="deepseek-chat">
+        </div>
+        <div class="status-msg" id="statusMsg"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-test" id="btnTestAI" style="display:none">🔗 测试连接</button>
+        <button class="btn-secondary" id="btnCancelSettings">取消</button>
+        <button class="btn-primary" id="btnSaveSettings">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reminder Popup Modal -->
+  <div class="modal-overlay" id="reminderModal">
+    <div class="modal-box reminder-popup">
+      <div style="font-size:3rem;text-align:center;margin-bottom:8px;">🔔</div>
+      <h2 style="text-align:center;margin-bottom:4px;">提醒</h2>
+      <div style="text-align:center;font-size:1.1rem;font-weight:600;color:var(--text);margin-bottom:8px;" id="reminderText"></div>
+      <div style="text-align:center;font-size:0.82rem;color:var(--text-secondary);margin-bottom:16px;" id="reminderMeta"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="btnSnooze">⏰ 10分钟后</button>
+        <button class="btn-secondary" id="btnCloseReminder">关闭</button>
+        <button class="btn-primary" id="btnDoneReminder">✓ 完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-strip">
+    <div class="stat-pill quick">   <span class="num" id="statQuick">0</span>碎片</div>
+    <div class="stat-pill planning"><span class="num" id="statPlanning">0</span>规划</div>
+    <div class="stat-pill system">  <span class="num" id="statSystem">0</span>项目</div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-section">
+    <form class="todo-form" id="todoForm" autocomplete="off">
+      <input type="text" id="todoInput" placeholder="输入你要做的事情，我会自动分析归类…" maxlength="300">
+      <button type="submit" class="submit-btn">添加</button>
+    </form>
+    <div class="analysis-preview" id="analysisPreview">
+      <span class="dot" id="previewDot"></span>
+      <span>识别为：</span>
+      <span class="label" id="previewLabel"></span>
+      <span id="previewDetail" style="flex:1"></span>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all">全部</button>
+    <button class="filter-btn" data-filter="quick">🏃 碎片</button>
+    <button class="filter-btn" data-filter="planning">📅 规划</button>
+    <button class="filter-btn" data-filter="system">🏗️ 项目</button>
+    <button class="filter-btn" data-filter="active">进行中</button>
+    <button class="filter-btn" data-filter="completed">已完成</button>
+  </div>
+
+  <!-- Task list -->
+  <ul class="todo-list" id="todoList"></ul>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span id="taskCount">0 项待办</span>
+    <button class="clear-btn" id="exportHistory">导出历史</button>
+    <button class="clear-btn" id="clearCompleted">清除已完成</button>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ===================================================================
+   Smart Todo — 完整应用脚本
+   =================================================================== */
+
+// ===================== TOAST =====================
+function toast(msg, className = '') {
+  const c = document.getElementById('toastContainer');
+  if (!c) return;
+  const t = document.createElement('div');
+  t.className = `toast${className ? ` ${className}` : ''}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  t.addEventListener('animationend', function(e) {
+    if (e.animationName === 'toastOut') t.remove();
+  });
+}
+
+// Global error catcher — surface JS errors as toasts
+window.addEventListener('error', (e) => {
+  if (e.target === window) {
+    toast('❌ JS错误: ' + (e.message || '').substring(0, 80));
+  }
+});
+window.addEventListener('unhandledrejection', (e) => {
+  toast('❌ 异步错误: ' + (e.reason?.message || '').substring(0, 80));
+});
+
+// ===================== INDEXED DB STORAGE =====================
+const TodoDB = (() => {
+  const DB_NAME = 'smartTodo';
+  const DB_VER = 2;
+  let db = null;
+
+  async function open() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VER);
+      req.onupgradeneeded = (e) => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains('todos')) {
+          d.createObjectStore('todos', { keyPath: 'id' });
+        }
+        if (!d.objectStoreNames.contains('meta')) {
+          d.createObjectStore('meta', { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function tx(mode) { return db.transaction('todos', mode).objectStore('todos'); }
+  function metaTx(mode) { return db.transaction('meta', mode).objectStore('meta'); }
+
+  async function getAll() {
+    return new Promise((resolve) => {
+      const r = tx('readonly').getAll();
+      r.onsuccess = () => resolve(r.result || []);
+      r.onerror = () => resolve([]);
+    });
+  }
+
+  async function put(todo) {
+    return new Promise((resolve) => { const r = tx('readwrite').put(todo); r.onsuccess = resolve; });
+  }
+
+  async function remove(id) {
+    return new Promise((resolve) => { const r = tx('readwrite').delete(id); r.onsuccess = resolve; });
+  }
+
+  async function putAll(todos) {
+    return new Promise((resolve) => {
+      const s = tx('readwrite');
+      todos.forEach(t => s.put(t));
+      s.transaction.oncomplete = resolve;
+    });
+  }
+
+  /* --- Meta (settings) --- */
+  async function getMeta(key) {
+    return new Promise((resolve) => {
+      const r = metaTx('readonly').get(key);
+      r.onsuccess = () => resolve(r.result ? r.result.value : null);
+      r.onerror = () => resolve(null);
+    });
+  }
+
+  async function setMeta(key, value) {
+    return new Promise((resolve) => {
+      metaTx('readwrite').put({ key, value });
+      resolve();
+    });
+  }
+
+  return { open, getAll, put, remove, putAll, getMeta, setMeta };
+})();
+
+// ===================== CLASSIFIER ENGINE =====================
+
+const Classifier = (() => {
+
+  /* --- Feature word banks --- */
+  const TIME_WORDS = /今天|明天|后天|大后天|今晚|明晚|明早|早上|上午|中午|下午|傍晚|晚上|周[一二三四五六日]|下周[一二三四五六日]|下下周|本周|这周|\d{1,2}月\d{1,2}[日号]|\d{1,2}[点时](\d{1,2}分)?|\d{1,2}:\d{2}/g;
+
+  const TIME_BLOCK_WORDS = {
+    morning:  /早上|早晨|上午|早起|晨会/g,
+    noon:     /中午/g,
+    afternoon:/下午/g,
+    evening:  /傍晚|黄昏/g,
+    night:    /晚上|今晚|明晚|夜间/g,
+  };
+
+  const PRIORITY_HIGH   = /紧急|马上|立刻|立即|ASAP|火速|赶快|赶紧|重要|必须|务必/g;
+  const PRIORITY_LOW    = /不着急|有空|不急|抽空|改天|闲了/g;
+
+  const QUICK_ACTIONS    = /买|拿|取|交|寄|还|打印|回复|打[电话个]|缴费|充值|预约|领取|退回|退货|签收|快递|送/g;
+  const PLANNING_ACTIONS = /开会|提交|完成|去|参加|整理|写|处理|跟进|确认|沟通|面试|体检|报名|检查|审核|发送|上传|下载|填写|核对/g;
+  const PROJECT_WORDS    = /重构|方案|规划|设计|开发|上线|汇报|分析|调研|优化|架构|模块|系统|数据|文档|报告|PPT|周报|需求|规范|OKR|KPI|测试|部署|发布|迁移/g;
+  const STRUCTURE_WORDS  = /涉及|包括|包含|拆解|分解|需要.*还要|以及|还有.*要/g;
+
+  // Multi-verb detection: count Chinese action verbs
+  function countVerbs(text) {
+    const allVerbs = text.match(/(买|拿|取|交|寄|还|打印|回复|打|缴费|充值|预约|开会|提交|完成|去|参加|整理|写|处理|跟进|确认|沟通|面试|体检|报名|检查|审核|发送|上传|下载|填写|核对|重构|设计|开发|上线|汇报|分析|调研|优化|测试|部署|发布|迁移|学习|准备|收集|制定|分享|安排)/g);
+    return allVerbs ? new Set(allVerbs).size : 0; // unique verb count
+  }
+
+  function countEnumerations(text) {
+    const matches = text.match(/[、,，]/g);
+    return matches ? matches.length : 0;
+  }
+
+  function hasTimeWords(text) {
+    // Reset regex lastIndex
+    TIME_WORDS.lastIndex = 0;
+    return TIME_WORDS.test(text);
+  }
+
+  function charLength(text) {
+    // Count CJK chars + words
+    const cjk = (text.match(/[一-鿿]/g) || []).length;
+    const other = text.replace(/[一-鿿\s]/g, '').length;
+    return cjk + Math.ceil(other / 3); // Approximate: 3 Latin chars ≈ 1 CJK char in semantic weight
+  }
+
+  /* --- Scoring functions --- */
+  function scoreQuick(text, feats) {
+    let s = 0;
+    const len = feats.charLen;
+    if (len <= 8)       s += 3;
+    else if (len <= 15) s += 2;
+    else if (len > 25)  s -= 2;
+    if (!feats.hasTime) s += 3;
+    if (QUICK_ACTIONS.test(text)) s += 3;
+    QUICK_ACTIONS.lastIndex = 0;
+    if (PROJECT_WORDS.test(text)) s -= 3;
+    PROJECT_WORDS.lastIndex = 0;
+    if (feats.verbCount >= 2) s -= 2;
+    if (feats.enumCount >= 2) s -= 1;
+    return s;
+  }
+
+  function scorePlanning(text, feats) {
+    let s = 0;
+    if (feats.hasTime) s += 4;
+    if (/(上午|下午|晚上|中午|早上)/g.test(text)) s += 3;
+    if (feats.charLen >= 12 && feats.charLen <= 35) s += 2;
+    if (PLANNING_ACTIONS.test(text)) s += 2;
+    PLANNING_ACTIONS.lastIndex = 0;
+    if (PRIORITY_HIGH.test(text)) s += 1;
+    PRIORITY_HIGH.lastIndex = 0;
+    if (PROJECT_WORDS.test(text)) s -= 2;
+    PROJECT_WORDS.lastIndex = 0;
+    if (feats.enumCount >= 3) s -= 1;
+    return s;
+  }
+
+  function scoreSystem(text, feats) {
+    let s = 0;
+    if (PROJECT_WORDS.test(text)) s += 5; // Strong signal — project words are definitive
+    PROJECT_WORDS.lastIndex = 0;
+    if (feats.charLen > 25) s += 3;
+    if (feats.verbCount >= 3) s += 3;
+    if (feats.enumCount >= 2) s += 2;
+    if (STRUCTURE_WORDS.test(text)) s += 2;
+    if (feats.charLen < 8) s -= 2; // Only penalize very short (< 8), not < 10
+    if (QUICK_ACTIONS.test(text)) s -= 2;
+    QUICK_ACTIONS.lastIndex = 0;
+    return s;
+  }
+
+  /* --- Main classify --- */
+  function classify(text) {
+    const feats = {
+      charLen: charLength(text),
+      hasTime: hasTimeWords(text),
+      verbCount: countVerbs(text),
+      enumCount: countEnumerations(text),
+    };
+
+    const sQuick    = scoreQuick(text, feats);
+    const sPlanning = scorePlanning(text, feats);
+    const sSystem   = scoreSystem(text, feats);
+
+    const scores = [
+      { type: 'quick',    score: sQuick },
+      { type: 'planning', score: sPlanning },
+      { type: 'system',   score: sSystem },
+    ];
+    scores.sort((a, b) => b.score - a.score);
+
+    const best = scores[0];
+    const second = scores[1];
+
+    let confidence;
+    const gap = best.score - second.score;
+    if (gap < 2)       confidence = 'low';
+    else if (gap < 4)  confidence = 'medium';
+    else               confidence = 'high';
+
+    return {
+      category: best.type,
+      confidence,
+      alternatives: confidence === 'low' ? scores.slice(0, 2).map(s => s.type) : [],
+      scores: { quick: sQuick, planning: sPlanning, system: sSystem },
+    };
+  }
+
+  return { classify };
+})();
+
+
+// ===================== EXTRACTOR ENGINE =====================
+
+const Extractor = (() => {
+
+  /* --- Date extraction --- */
+  function extractDate(text) {
+    const now = new Date();
+    let target = null;
+
+    // Relative offset: "1分钟后" / "一分钟后" / "半小时后" / "2小时后"
+    let m = text.match(/(\d+|半|一|二|两|三|四|五|六|七|八|九|十|十一|十二)\s*(分钟|分|小时|个小时)\s*后/);
+    if (m) {
+      const amount = chineseNumberToInt(m[1]);
+      const minutes = /小时|个小时/.test(m[2]) ? amount * 60 : amount;
+      if (Number.isFinite(minutes) && minutes > 0) {
+        target = new Date(now.getTime() + Math.round(minutes * 60 * 1000));
+      }
+    }
+
+    // Absolute date: "8月15日" / "8月15号" / "12月3日"
+    m = text.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]/);
+    if (m) {
+      const month = parseInt(m[1]) - 1;
+      const day = parseInt(m[2]);
+      target = new Date(now.getFullYear(), month, day);
+      // JavaScript rolls invalid dates (for example 2/31) into the next month.
+      // Treat them as invalid instead of silently scheduling the wrong day.
+      if (target.getMonth() !== month || target.getDate() !== day) return null;
+      if (target < now) target.setFullYear(target.getFullYear() + 1);
+    }
+
+    // Relative date
+    if (!target) {
+      if (/大后天/.test(text))      target = addDays(now, 3);
+      else if (/后天/.test(text))   target = addDays(now, 2);
+      else if (/明天|明早|明晚/.test(text)) target = addDays(now, 1);
+      else if (/今天|今晚/.test(text))     target = new Date(now);
+    }
+
+    // Day-of-week: "周五" / "下周三" / "下周3"
+    if (!target) {
+      m = text.match(/(下下?周|本周|这周)\s*([一二三四五六日1-6])/);
+      if (m) {
+        const weekOffset = m[1] === '下下周' ? 2 : (m[1] === '下周' ? 1 : 0);
+        const dayMap = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'日':0, '1':1,'2':2,'3':3,'4':4,'5':5,'6':6 };
+        const targetDay = dayMap[m[2]];
+        const currentDay = now.getDay();
+        let daysUntil = targetDay - currentDay + weekOffset * 7;
+        if (daysUntil <= 0 && weekOffset === 0) daysUntil += 7;
+        target = addDays(now, daysUntil);
+      }
+    }
+
+    // Day-of-week without modifier: "周五" (standalone)
+    if (!target) {
+      m = text.match(/(?<![下本这])周\s*([一二三四五六日])/);
+      if (m) {
+        const dayMap = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'日':0 };
+        const targetDay = dayMap[m[1]];
+        const currentDay = now.getDay();
+        let daysUntil = targetDay - currentDay;
+        if (daysUntil <= 0) daysUntil += 7;
+        target = addDays(now, daysUntil);
+      }
+    }
+
+    // Time: "下午3点" / "下午3点半" / "15:00" / "3:00"
+    let hours = null, minutes = null;
+    m = text.match(/(上午|下午|晚上|中午|早上|傍晚|凌晨)?\s*(\d{1,2})[点:：](\d{1,2})?[分半]?/);
+    if (m && m[2]) {
+      hours = parseInt(m[2]);
+      minutes = m[3] ? parseInt(m[3]) : 0;
+      const period = m[1];
+      if (period === '下午' && hours < 12) hours += 12;
+      if (period === '晚上' || period === '傍晚') { if (hours < 12) hours += 12; }
+      if (period === '中午' && hours < 12 && hours >= 0) hours += 12;
+      if (period === '上午' && hours === 12) hours = 0;
+      if (period === '凌晨' && hours === 12) hours = 0;
+
+      if (target) {
+        target.setHours(hours, minutes, 0, 0);
+      } else if (/(今天|今晚|明早)/.test(text)) {
+        target = new Date(now);
+        target.setHours(hours, minutes, 0, 0);
+      } else if (/(明天|明晚)/.test(text)) {
+        target = addDays(now, 1);
+        target.setHours(hours, minutes, 0, 0);
+      } else {
+        // User specified a time but no date → default to today at that time
+        target = new Date(now);
+        target.setHours(hours, minutes, 0, 0);
+        if (target <= now) target.setDate(target.getDate() + 1);
+      }
+    }
+
+    // "半" without explicit minutes
+    if (target && /半/.test(text) && minutes === 0 && hours !== null) {
+      target.setMinutes(30);
+    }
+
+    if (target && isNaN(target.getTime())) target = null;
+    return target;
+  }
+
+  function addDays(date, days) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+  }
+
+  /* --- Priority extraction --- */
+  const _PRI_HIGH = /紧急|马上|立刻|立即|ASAP|火速|赶快|赶紧|重要|必须|务必/g;
+  const _PRI_LOW  = /不着急|有空|不急|抽空|改天|闲了/g;
+  function extractPriority(text) {
+    _PRI_HIGH.lastIndex = 0;
+    if (_PRI_HIGH.test(text)) return 'high';
+    _PRI_LOW.lastIndex = 0;
+    if (_PRI_LOW.test(text)) return 'low';
+    if (/尽快|尽早/g.test(text)) return 'medium';
+    return null;
+  }
+
+  /* --- Time block extraction --- */
+  function extractTimeBlock(text) {
+    if (/早上|早晨|上午|早起/g.test(text)) return 'morning';
+    if (/中午/g.test(text))                 return 'noon';
+    if (/下午/g.test(text))                return 'afternoon';
+    if (/傍晚|黄昏/g.test(text))           return 'evening';
+    if (/晚上|今晚|明晚|夜间/g.test(text)) return 'night';
+    return null;
+  }
+
+  /* --- Tag extraction --- */
+  function extractTags(text) {
+    const tags = new Set();
+    const WORK_RE   = /开会|汇报|老板|客户|邮件|项目|方案|报告|PPT|周报|需求|上线|设计|开发|测试|面试|OKR|KPI|规范|架构|部署|发布|审核|文档|数据/g;
+    const LIFE_RE   = /买|超市|快递|水电|房租|物业|医院|健身|跑步|吃饭|聚会|洗牙|体检|旅行|露营|搬家|装修|买菜|做饭/g;
+    const STUDY_RE  = /看书|课程|视频|笔记|考试|复习|作业|学习|教程|博客|分享|读书|上课|培训|讲座/g;
+    const HEALTH_RE = /体检|跑步|健身|游泳|瑜伽|冥想|医院|洗牙|看病|药|疫苗|锻炼/g;
+
+    if (WORK_RE.test(text))   tags.add('工作');
+    if (LIFE_RE.test(text))   tags.add('生活');
+    if (STUDY_RE.test(text))  tags.add('学习');
+    if (HEALTH_RE.test(text)) tags.add('健康');
+
+    return [...tags];
+  }
+
+  /* --- Subtask candidates --- */
+  function extractSubtaskCandidates(text) {
+    // Split by enumeration
+    const parts = text.split(/[，,]\s*(?:需要|还要|以及|并且|还有)?\s*/);
+    if (parts.length < 2) return [];
+
+    // Check for explicit "涉及/包括" pattern first
+    const includeMatch = text.match(/(?:涉及|包括|包含|主要有?|分为?)\s*(.+)/);
+    if (includeMatch) {
+      const items = includeMatch[1].split(/[、，,]/).filter(s => s.trim().length > 1);
+      if (items.length >= 2) return items.map(s => s.trim());
+    }
+
+    // Pick the longest fragment after a comma as potential subtask list
+    const lastPart = parts[parts.length - 1];
+    const items = lastPart.split(/[、]/).filter(s => s.trim().length > 1);
+    if (items.length >= 2) return items.map(s => s.trim());
+
+    return [];
+  }
+
+  /* --- Estimated minutes --- */
+  function estimateMinutes(text, category) {
+    if (category === 'quick') return 5;
+    if (category === 'planning') {
+      if (/开会|会议/.test(text)) return 60;
+      return 30;
+    }
+    if (category === 'system') return null; // unknown, too variable
+    return 15;
+  }
+
+  /* --- Recurrence extraction --- */
+  /* --- Title extraction --- */
+  function extractTitle(text) {
+    const explicit = extractReminderKeyword(text);
+    if (explicit) return explicit;
+
+    // Common action words → generate title
+    const actions = [
+      { re: /喝水|饮水/, title: '该喝水啦' },
+      { re: /吃饭|用餐|午饭|晚饭|早餐|午餐|晚餐/, title: '该吃饭啦' },
+      { re: /开会|会议/, title: '开会时间' },
+      { re: /休息|睡觉|午休|小憩/, title: '该休息一下啦' },
+      { re: /运动|跑步|健身|锻炼|游泳/, title: '该运动啦' },
+      { re: /吃药|服药/, title: '该吃药了' },
+      { re: /站立|起身|活动/, title: '起来活动一下' },
+      { re: /回复|回邮件|回消息/, title: '别忘了回复' },
+      { re: /提交|交付|截止/, title: '截止时间快到啦' },
+      { re: /学习|看书|读书/, title: '该学习啦' },
+    ];
+    for (const a of actions) {
+      if (a.re.test(text)) return a.title;
+    }
+
+    // Fallback: use first 6 chars of cleaned text
+    const cleaned = text.replace(/提醒|别忘了|记住|每天|每小时|每隔|开始|结束/g, '').trim();
+    return cleaned.substring(0, 8) || '到时间了';
+  }
+
+  function extractReminderKeyword(text) {
+    const m = text.match(/(?:提醒|记住|别忘了?)\s*([^，,。；;（）()]+)/);
+    if (!m || !m[1]) return null;
+    let keyword = m[1]
+      .replace(/^(我|你|他|她|它|一下|我一下)/, '')
+      .replace(/^在\s*\d{1,2}\s*[:：点]\s*\d{0,2}\s*分?\s*时?/, '')
+      .replace(/^于\s*\d{1,2}\s*[:：点]\s*\d{0,2}\s*分?\s*时?/, '')
+      .replace(/^每(?:间隔|隔)?\s*(?:\d+|半|一|二|两|三|四|五|六|七|八|九|十|十一|十二)?\s*(?:分钟|分|小时|个小时)/, '')
+      .replace(/(?:仅)?工作日内?提醒?$/, '')
+      .replace(/工作日$/, '')
+      .replace(/为期.+$/, '')
+      .replace(/每天|每日|每一?天|每小时|每隔|每间隔/g, '')
+      .replace(/\d{1,2}\s*[:：点]\s*\d{0,2}\s*分?\s*时?/g, '')
+      .replace(/[（）()]/g, '')
+      .trim();
+    return keyword.length >= 2 && keyword.length <= 20 ? keyword : null;
+  }
+
+  function extractRecurrence(text) {
+    const result = { recurrence: null, recurrenceEnd: null, recurrenceInterval: 1, reminderPlan: null };
+
+    if (/每天|每日|每一天/.test(text)) result.recurrence = 'daily';
+    else if (/每分钟|每一分钟/.test(text)) { result.recurrence = 'minutely'; result.recurrenceInterval = 1; }
+    else if (/每小时/.test(text)) result.recurrence = 'hourly';
+    else if (/每周|每星期|每个星期/.test(text)) result.recurrence = 'weekly';
+    else return result;
+
+    // Extract time range: "9:30~18:00", "9:30到18:00", "9点30到18点"
+    const rangeMatch = text.match(/(\d{1,2}(?::\d{1,2}|点(?:\d{1,2}分?)?)?)\s*(?:~|～|-|到|至|—|--)\s*(\d{1,2}(?::\d{1,2}|点(?:\d{1,2}分?)?)?)/);
+    if (rangeMatch) {
+      const start = parseClockTime(rangeMatch[1]);
+      const end = parseClockTime(rangeMatch[2]);
+      if (start && end && start.minutesOfDay < end.minutesOfDay) {
+        const now = new Date();
+        const intervalMinutes = extractIntervalMinutes(text) || 60;
+        const until = extractPlanUntil(text, now);
+
+        result.recurrence = 'custom';
+        result.recurrenceInterval = intervalMinutes;
+        result.recurrenceEnd = until ? until.toISOString() : null;
+        result.reminderPlan = {
+          type: 'time-window',
+          startTime: start.label,
+          endTime: end.label,
+          intervalMinutes,
+          weekdaysOnly: /工作日|工作时间|周一到周五|周一至周五|上班日|工作日内/.test(text),
+          until: until ? until.toISOString() : null,
+        };
+
+        const startDate = new Date(now);
+        startDate.setHours(start.hour, start.minute, 0, 0);
+        result.recurrenceStart = startDate;
+      }
+    }
+
+    if (!result.reminderPlan && result.recurrence === 'daily') {
+      const fixed = extractFixedReminderPlan(text);
+      if (fixed) {
+        result.recurrence = 'custom';
+        result.reminderPlan = fixed;
+      }
+    }
+
+    // Interval: "每2小时" / "每3天"
+    const intMatch = text.match(/每\s*(\d+)\s*(小时|天|周)/);
+    if (intMatch && !result.reminderPlan) result.recurrenceInterval = parseInt(intMatch[1]) || 1;
+
+    return result;
+  }
+
+  function extractFixedReminderPlan(text) {
+    const m = text.match(/(\d{1,2}\s*[:：]\s*\d{1,2}|\d{1,2}\s*点\s*(?:\d{1,2}\s*分?)?)/);
+    const clock = m ? parseClockTime(m[1].replace('：', ':')) : null;
+    if (!clock) return null;
+    return {
+      type: 'fixed-time',
+      time: clock.label,
+      weekdaysOnly: /工作日|工作时间|周一到周五|周一至周五|上班日|工作日内|仅工作日/.test(text),
+      until: null,
+    };
+  }
+
+  function parseClockTime(value) {
+    const raw = String(value || '').trim().replace(/\s+/g, '');
+    const normalized = /^\d{1,2}点$/.test(raw)
+      ? raw.replace('点', '')
+      : raw.replace(/点半$/, ':30').replace(/点/, ':').replace(/分/, '');
+    const m = normalized.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
+    if (!m) return null;
+    const hour = Number(m[1]);
+    const minute = m[2] === undefined ? 0 : Number(m[2]);
+    if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    return {
+      hour,
+      minute,
+      minutesOfDay: hour * 60 + minute,
+      label: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+    };
+  }
+
+  function chineseNumberToInt(value) {
+    const map = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10, 半: 0.5 };
+    if (!value) return 1;
+    if (/^\d+$/.test(value)) return Number(value);
+    if (value === '半') return 0.5;
+    if (map[value]) return map[value];
+    const tenMatch = value.match(/^十([一二三四五六七八九])?$/);
+    if (tenMatch) return 10 + (map[tenMatch[1]] || 0);
+    const mixedTen = value.match(/^([一二两三四五六七八九])十([一二三四五六七八九])?$/);
+    if (mixedTen) return map[mixedTen[1]] * 10 + (map[mixedTen[2]] || 0);
+    return 1;
+  }
+
+  function extractIntervalMinutes(text) {
+    const m = text.match(/每(?:间隔|隔)?\s*(\d+|半|一|二|两|三|四|五|六|七|八|九|十|十一|十二)?\s*(分钟|分|小时|个小时)/);
+    if (!m) return null;
+    const amount = chineseNumberToInt(m[1]);
+    const unit = m[2];
+    const minutes = /小时|个小时/.test(unit) ? amount * 60 : amount;
+    return Math.max(1, Math.min(1440, Math.round(minutes)));
+  }
+
+  function extractPlanUntil(text, now) {
+    if (/为期\s*一年|持续\s*一年|一年/.test(text)) {
+      const end = new Date(now);
+      end.setFullYear(end.getFullYear() + 1);
+      end.setHours(23, 59, 59, 999);
+      return end;
+    }
+    const daysMatch = text.match(/(?:为期|持续)\s*(\d+)\s*(天|日|周|个月|月)/);
+    if (daysMatch) {
+      const end = new Date(now);
+      const n = Number(daysMatch[1]);
+      if (/周/.test(daysMatch[2])) end.setDate(end.getDate() + n * 7);
+      else if (/月/.test(daysMatch[2])) end.setMonth(end.getMonth() + n);
+      else end.setDate(end.getDate() + n);
+      end.setHours(23, 59, 59, 999);
+      return end;
+    }
+    return null;
+  }
+
+  /* --- Main extract --- */
+  function extract(text, category) {
+    const rec = extractRecurrence(text);
+    return {
+      title: extractTitle(text),
+      dueDate: rec.reminderPlan ? null : (rec.recurrenceStart || extractDate(text)),
+      priority: extractPriority(text),
+      timeBlock: extractTimeBlock(text),
+      tags: extractTags(text),
+      subtaskCandidates: category === 'system' ? extractSubtaskCandidates(text) : [],
+      estimatedMinutes: estimateMinutes(text, category),
+      recurrence: rec.recurrence,
+      recurrenceEnd: rec.recurrenceEnd,
+      recurrenceInterval: rec.recurrenceInterval,
+      reminderPlan: rec.reminderPlan,
+    };
+  }
+
+  return { extract };
+})();
+
+
+// ===================== SUGGESTIONS ENGINE =====================
+
+const Suggestions = (() => {
+
+  function generate(todo) {
+    const suggestions = [];
+    const cat = todo.category;
+    const ext = {
+      dueDate: todo.dueDate ? new Date(todo.dueDate) : null,
+      priority: todo.priority,
+      timeBlock: todo.timeBlock,
+      tags: todo.tags,
+      subtaskCandidates: (todo.subtasks || []).map(s => typeof s === 'string' ? s : s.text),
+      estimatedMinutes: todo.estimatedMinutes,
+    };
+
+    if (cat === 'quick') {
+      // Recurring task → show recurring reminder suggestion
+      if (todo.recurrence && !todo.reminderPlan) {
+        const recNames = { minutely: '每分钟', hourly: '每小时', daily: '每天', weekly: '每周' };
+        const recName = recNames[todo.recurrence] || '重复';
+        suggestions.push({
+          id: 'start-recurring',
+          icon: '🔄',
+          text: `检测到「${recName}」循环 — 点击开始${recName}提醒`,
+          action: 'start_recurring',
+          actionLabel: `开始${recName}提醒`,
+        });
+      } else {
+        const reminderTime = ReminderManager.suggestReminderTime(todo);
+        const reminderLabel = ReminderManager.formatReminderTime(reminderTime);
+        suggestions.push({
+          id: 'do-now',
+          icon: '⚡',
+          text: `这个任务估计 ${ext.estimatedMinutes || 2} 分钟内能搞定，要不要现在就处理掉？`,
+          action: 'do_now',
+          actionLabel: '现在做',
+        });
+        suggestions.push({
+          id: 'set-reminder',
+          icon: '🔔',
+          text: `看起来是个小事情 — 设个提醒（${reminderLabel}）就不会忘了。`,
+          action: 'set_reminder',
+          actionLabel: `${reminderLabel}提醒`,
+        });
+      }
+    }
+
+    if (cat === 'planning') {
+      // Recurring task → show recurring reminder suggestion
+      if (todo.recurrence && !todo.reminderPlan) {
+        const recNames = { minutely: '每分钟', hourly: '每小时', daily: '每天', weekly: '每周' };
+        const recName = recNames[todo.recurrence] || '重复';
+        suggestions.push({
+          id: 'start-recurring',
+          icon: '🔄',
+          text: `检测到「${recName}」循环 — 点击开始${recName}提醒`,
+          action: 'start_recurring',
+          actionLabel: `开始${recName}提醒`,
+        });
+      } else {
+        const reminderTime = ReminderManager.suggestReminderTime(todo);
+        const reminderLabel = ReminderManager.formatReminderTime(reminderTime);
+        suggestions.push({
+          id: 'set-reminder',
+          icon: '🔔',
+          text: `建议在 ${reminderLabel} 提醒你处理这个任务。`,
+          action: 'set_reminder',
+          actionLabel: `${reminderLabel}提醒`,
+        });
+      }
+      if (ext.dueDate) {
+        const dateStr = formatDateShort(ext.dueDate);
+        const isToday = isSameDay(ext.dueDate, new Date());
+        const isTomorrow = isSameDay(ext.dueDate, addDays(new Date(), 1));
+        let desc;
+        if (isToday) desc = `已识别截止时间为今天${formatTime(ext.dueDate)}，要设为到期时间吗？`;
+        else if (isTomorrow) desc = `已识别截止时间为明天${formatTime(ext.dueDate)}，要设为到期时间吗？`;
+        else desc = `已识别截止时间为 ${dateStr}，要设为到期时间吗？`;
+        suggestions.push({ id: 'set-due', icon: '📅', text: desc, action: 'set_due', actionLabel: '设为截止日' });
+      }
+      if (ext.timeBlock) {
+        const blockNames = { morning: '上午', noon: '中午', afternoon: '下午', evening: '傍晚', night: '晚上' };
+        suggestions.push({
+          id: 'time-block',
+          icon: '⏰',
+          text: `建议安排在${blockNames[ext.timeBlock] || ext.timeBlock}处理。`,
+          action: 'set_timeblock',
+          actionLabel: '确认时段',
+        });
+      }
+      if (!ext.priority) {
+        const urgency = ext.dueDate ? getUrgency(ext.dueDate) : null;
+        let prioRec, prioLabel;
+        if (urgency === 'overdue' || urgency === 'today') { prioRec = 'high'; prioLabel = '高优先级'; }
+        else if (urgency === 'tomorrow') { prioRec = 'medium'; prioLabel = '中优先级'; }
+        else { prioRec = 'medium'; prioLabel = '中优先级'; }
+        suggestions.push({
+          id: 'set-priority',
+          icon: '🚩',
+          text: `建议优先级设为"${prioLabel}"。`,
+          action: `set_priority:${prioRec}`,
+          actionLabel: `设为${prioLabel}`,
+        });
+      }
+    }
+
+    if (cat === 'system') {
+      // Smart reminder — suggest starting tomorrow morning
+      const reminderTime = ReminderManager.suggestReminderTime(todo);
+      const reminderLabel = ReminderManager.formatReminderTime(reminderTime);
+      suggestions.push({
+        id: 'set-reminder',
+        icon: '🔔',
+        text: `建议 ${reminderLabel} 提醒，开始规划这个任务的第一步。`,
+        action: 'set_reminder',
+        actionLabel: `${reminderLabel}提醒`,
+      });
+      if (ext.subtaskCandidates && ext.subtaskCandidates.length >= 2) {
+        const items = ext.subtaskCandidates.slice(0, 5).join(' · ');
+        suggestions.push({
+          id: 'create-subtasks',
+          icon: '📋',
+          text: `帮你识别出 ${ext.subtaskCandidates.length} 个可能的子项：${items}`,
+          action: 'create_subtasks',
+          actionLabel: '拆解为子任务',
+        });
+      }
+      suggestions.push({
+        id: 'first-step',
+        icon: '🎯',
+        text: '大型任务建议先明确"第一步做什么"，降低启动阻力。',
+        action: 'add_first_step',
+        actionLabel: '添加第一步',
+      });
+      if (ext.subtaskCandidates.length === 0) {
+        suggestions.push({
+          id: 'set-milestone',
+          icon: '🏁',
+          text: '建议为这个任务设置一个中期检查点。',
+          action: 'set_milestone',
+          actionLabel: '设里程碑',
+        });
+      }
+    }
+
+    // Common suggestion: if tags were detected
+    if (ext.tags && ext.tags.length > 0 && !todo.tagsConfirmed) {
+      suggestions.push({
+        id: 'confirm-tags',
+        icon: '🏷️',
+        text: `自动识别标签：${ext.tags.join('、')}`,
+        action: 'confirm_tags',
+        actionLabel: '确认标签',
+      });
+    }
+
+    return suggestions;
+  }
+
+  function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n); return d; }
+  function isSameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+  function formatDateShort(d) { return `${d.getMonth()+1}月${d.getDate()}日`; }
+  function formatTime(d) { const h = d.getHours(), m = d.getMinutes(); return m > 0 ? `${h}:${String(m).padStart(2,'0')}` : `${h}点`; }
+  function getUrgency(d) {
+    const now = new Date();
+    if (d < now) return 'overdue';
+    if (isSameDay(d, now)) return 'today';
+    if (isSameDay(d, addDays(now, 1))) return 'tomorrow';
+    return 'future';
+  }
+
+  return { generate };
+})();
+
+
+// ===================== REMINDER MANAGER =====================
+const ReminderManager = (() => {
+  const timers = new Map(); // todoId → { timeoutId, reminderAt }
+  let notificationPermission = 'default';
+  let reminderStyle = 'default';
+  let audioCtx = null;
+
+  /* --- Notifications --- */
+  async function requestPermission() {
+    if (!('Notification' in window)) return 'denied';
+    const result = await Notification.requestPermission();
+    notificationPermission = result;
+    return result;
+  }
+
+  async function ensurePermission() {
+    // Electron: native notifications don't need browser permission
+    if (window.electronAPI?.isElectron) return true;
+    if (!('Notification' in window)) return false;
+    if (Notification.permission === 'granted') { notificationPermission = 'granted'; return true; }
+    if (Notification.permission === 'denied') return false;
+    return await requestPermission() === 'granted';
+  }
+
+  async function showNotification(todo) {
+    const title = todo.title || todo.text || '到时间了';
+    const body = '';
+
+    // Prefer Electron native notification (works even when browser is hidden)
+    if (window.electronAPI?.showNotification) {
+      try {
+        const result = await window.electronAPI.showNotification({
+          title: `🔔 ${title}`,
+          body,
+          style: todo.reminderStyle || 'default',
+          todoId: todo.id,
+        });
+        if (result && !result.success) console.log('[Reminder] Notification failed:', result.reason);
+      } catch (e) {
+        console.log('[Reminder] Notification error:', e.message);
+      }
+      return;
+    }
+
+    // Fallback: browser Notification API
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const n = new Notification(`🔔 ${title}`, {
+      body,
+      icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%236366f1%22/><text x=%2250%22 y=%2270%22 font-size=%2260%22 text-anchor=%22middle%22>🔔</text></svg>',
+      tag: `todo-${todo.id}`,
+      requireInteraction: true,
+    });
+
+    n.addEventListener('click', () => { window.focus(); n.close(); });
+  }
+
+  /* --- Sound --- */
+  function playSound() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // Resume if suspended (autoplay policy)
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const now = audioCtx.currentTime;
+
+      // Two-tone ding: C5 → E5
+      [523.25, 659.25].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, now + i * 0.15);
+        gain.gain.linearRampToValueAtTime(0.25, now + i * 0.15 + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + i * 0.15);
+        osc.stop(now + i * 0.15 + 0.45);
+      });
+    } catch (_) { /* Silently fail */ }
+  }
+
+  /* --- Smart reminder time suggestion --- */
+  function suggestReminderTime(todo) {
+    const now = new Date();
+
+    if (todo.reminderPlan) {
+      return computeNextReminderTime(todo, now);
+    }
+
+    // Rule 1: If user explicitly typed a specific time, use it
+    if (todo.dueDate) {
+      const due = new Date(todo.dueDate);
+      const hasSpecificTime = due.getHours() !== 0 || due.getMinutes() !== 0;
+      if (hasSpecificTime) {
+        // User typed something like "9:30" or "下午3点" — respect it
+        // Decide which day: use the due date if it's today or future
+        if (due > now) return due;
+        // Due time already passed today — schedule for tomorrow same time
+        const tomorrow = addDays(due, 1);
+        return tomorrow;
+      }
+      // No specific time in dueDate (just a date like "明天" or "周五")
+      // Due today: remind 1 hour before or ASAP
+      if (isSameDay(due, now)) {
+        const oneHourBefore = addMin(due, -60);
+        return oneHourBefore > now ? oneHourBefore : addMin(now, 5);
+      }
+      // Due future: remind at the due date, 9 AM
+      const nineAM = new Date(due);
+      nineAM.setHours(9, 0, 0, 0);
+      return nineAM > now ? nineAM : addMin(now, 30);
+    }
+
+    // Rule 2: Recurring task with no specific time → start immediately
+    if (todo.recurrence) {
+      return addMin(now, 1); // Fire in 1 minute, then repeat per recurrence
+    }
+
+    // Rule 3: Category-based fallback (no dueDate)
+    if (todo.category === 'quick') {
+      return addMin(now, 30);
+    }
+
+    if (todo.category === 'planning') {
+      if (todo.timeBlock) {
+        const blockHours = { morning: 9, noon: 12, afternoon: 14, evening: 18, night: 20 };
+        const hour = blockHours[todo.timeBlock] || 9;
+        const reminder = new Date();
+        reminder.setHours(hour, 0, 0, 0);
+        if (reminder <= now) reminder.setDate(reminder.getDate() + 1);
+        return reminder;
+      }
+      // Default: tomorrow 9 AM
+      const nineAM = new Date(now);
+      nineAM.setDate(nineAM.getDate() + 1);
+      nineAM.setHours(9, 0, 0, 0);
+      return nineAM;
+    }
+
+    if (todo.category === 'system') {
+      const nineAM = new Date(now);
+      nineAM.setDate(nineAM.getDate() + 1);
+      nineAM.setHours(9, 0, 0, 0);
+      return nineAM;
+    }
+
+    return addMin(now, 30);
+  }
+
+  function formatReminderTime(date) {
+    const now = new Date();
+    const h = date.getHours(), m = date.getMinutes();
+    const timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+
+    if (isSameDay(date, now)) return `今天 ${timeStr}`;
+    const tomorrow = addDays(now, 1);
+    if (isSameDay(date, tomorrow)) return `明天 ${timeStr}`;
+    return `${date.getMonth()+1}/${date.getDate()} ${timeStr}`;
+  }
+
+  function formatReminderPlan(plan) {
+    if (!plan) return '';
+    if (plan.type === 'fixed-time') {
+      return `${plan.weekdaysOnly ? '工作日 ' : '每天 '}${plan.time}`;
+    }
+    if (plan.type !== 'time-window') return '';
+    const scope = plan.weekdaysOnly ? '工作日 ' : '每天 ';
+    const interval = Number(plan.intervalMinutes) >= 60 && Number(plan.intervalMinutes) % 60 === 0
+      ? `每${Number(plan.intervalMinutes) / 60}小时`
+      : `每${Number(plan.intervalMinutes) || 60}分钟`;
+    return `${scope}${plan.startTime}-${plan.endTime} ${interval}`;
+  }
+
+  /* --- Scheduling --- */
+  // Prefer Electron main-process timers (Node.js, never throttled)
+  // Fall back to renderer setTimeout for browser
+  async function scheduleReminder(todo, reminderTime) {
+    cancelReminder(todo.id);
+    todo.reminderStyle = reminderStyle;
+
+    const now = new Date();
+    const msUntil = reminderTime.getTime() - now.getTime();
+    if (msUntil <= 0) return;
+
+    // Electron: use main process Node.js timer
+    if (window.electronAPI?.scheduleReminder) {
+      await window.electronAPI.scheduleReminder(todo, reminderTime.toISOString());
+    } else {
+      // Browser fallback
+      const timeoutId = setTimeout(() => { fireReminder(todo); }, msUntil);
+      timers.set(todo.id, { timeoutId, reminderAt: reminderTime.toISOString() });
+    }
+
+    // Persist to DB
+    todo.reminderAt = reminderTime.toISOString();
+    await TodoDB.put(todo);
+
+    return reminderTime;
+  }
+
+  function cancelReminder(todoId) {
+    // Electron
+    if (window.electronAPI?.cancelReminder) {
+      window.electronAPI.cancelReminder(todoId);
+    }
+    // Browser fallback
+    const entry = timers.get(todoId);
+    if (entry) {
+      clearTimeout(entry.timeoutId);
+      timers.delete(todoId);
+    }
+  }
+
+  function fireReminder(todo) {
+    timers.delete(todo.id);
+    if (window._showReminderModal) window._showReminderModal(todo);
+    try { showNotification(todo); } catch(e) {}
+    try { playSound(); } catch(e) {}
+    handleRecurrence(todo);
+  }
+
+  function handleRecurrence(todo) {
+    if (todo.done) {
+      todo.reminderAt = null;
+      TodoDB.put(todo);
+      return;
+    }
+    if (!todo.recurrence && !todo.reminderPlan) {
+      todo.done = true;
+      todo.completedAt = todo.completedAt || Date.now();
+      todo.reminderAt = null;
+      TodoDB.put(todo);
+      return;
+    }
+
+    const now = new Date();
+    let nextTime = null;
+    const interval = todo.recurrenceInterval || 1;
+
+    if (todo.reminderPlan) {
+      nextTime = computeNextReminderTime(todo, now);
+    } else if (todo.reminderAt) {
+      const lastReminder = new Date(todo.reminderAt);
+      switch (todo.recurrence) {
+        case 'minutely': nextTime = addMin(lastReminder, interval); break;
+        case 'hourly': nextTime = addMin(lastReminder, 60 * interval); break;
+        case 'daily':  nextTime = addDays(lastReminder, interval); break;
+        case 'weekly': nextTime = addDays(lastReminder, 7 * interval); break;
+      }
+    }
+    if (!nextTime) {
+      todo.reminderAt = null;
+      TodoDB.put(todo);
+      return;
+    }
+
+    // Stop if beyond recurrence end
+    if (!todo.reminderPlan && todo.recurrenceEnd) {
+      const endTime = new Date(todo.recurrenceEnd);
+      if (nextTime > endTime) {
+        todo.reminderAt = null;
+        TodoDB.put(todo);
+        return;
+      }
+    }
+
+    // If next time is in the past (system was asleep), use near-future
+    if (nextTime <= now) {
+      switch (todo.recurrence) {
+        case 'minutely': nextTime = addMin(now, 1); break;
+        case 'hourly': nextTime = addMin(now, 5); break;
+        case 'daily':  nextTime = addDays(now, 1); break;
+        case 'weekly': nextTime = addDays(now, 7); break;
+      }
+    }
+
+    scheduleReminder(todo, nextTime);
+  }
+
+  async function rescheduleAll(todos) {
+    const now = new Date();
+    const normalizedTodos = [];
+    for (const todo of todos) {
+      if (todo.done) { normalizedTodos.push(todo); continue; }
+      if (todo.reminderPlan) {
+        const next = computeNextReminderTime(todo, now);
+        todo.reminderAt = next ? next.toISOString() : null;
+        try { await TodoDB.put(todo); } catch (_) {}
+      }
+      normalizedTodos.push(todo);
+    }
+
+    // Electron: delegate to main process
+    if (window.electronAPI?.rescheduleAll) {
+      await window.electronAPI.rescheduleAll(normalizedTodos);
+      return;
+    }
+
+    // Browser fallback
+    normalizedTodos.forEach(todo => {
+      if (!todo.reminderAt || todo.done) return;
+      const reminderTime = new Date(todo.reminderAt);
+      if (reminderTime <= now) { fireReminder(todo); return; }
+      const msUntil = reminderTime.getTime() - now.getTime();
+      const timeoutId = setTimeout(() => fireReminder(todo), msUntil);
+      timers.set(todo.id, { timeoutId, reminderAt: todo.reminderAt });
+    });
+  }
+
+  function hasReminder(todoId) { return timers.has(todoId); }
+
+  function getReminderAt(todoId) {
+    const entry = timers.get(todoId);
+    return entry ? entry.reminderAt : null;
+  }
+
+  function setReminderStyle(style) {
+    reminderStyle = ['default', 'pink-bubble', 'lavender-bubble'].includes(style) ? style : 'default';
+  }
+
+  /* --- Helpers --- */
+  function computeNextReminderTime(todo, fromDate = new Date()) {
+    const plan = todo.reminderPlan;
+    if (!plan) return null;
+    if (plan.type === 'fixed-time') return computeNextFixedReminderTime(todo, fromDate);
+    if (plan.type !== 'time-window') return null;
+    const start = parsePlanClock(plan.startTime);
+    const end = parsePlanClock(plan.endTime);
+    const intervalMinutes = Math.max(1, Math.min(1440, Number(plan.intervalMinutes) || 60));
+    if (!start || !end || start.minutesOfDay >= end.minutesOfDay) return null;
+
+    const until = (plan.until || todo.recurrenceEnd) ? new Date(plan.until || todo.recurrenceEnd) : null;
+    const cursor = new Date(fromDate);
+    cursor.setSeconds(0, 0);
+    if (cursor < fromDate) cursor.setMinutes(cursor.getMinutes() + 1);
+
+    for (let i = 0; i < 370; i++) {
+      const day = addDays(cursor, i);
+      if (plan.weekdaysOnly && !isWeekday(day)) continue;
+
+      const windowStart = new Date(day);
+      windowStart.setHours(start.hour, start.minute, 0, 0);
+      const windowEnd = new Date(day);
+      windowEnd.setHours(end.hour, end.minute, 0, 0);
+
+      let candidate = new Date(windowStart);
+      if (isSameDay(day, cursor) && cursor > windowStart) {
+        const elapsed = cursor.getTime() - windowStart.getTime();
+        const steps = Math.ceil(elapsed / (intervalMinutes * 60 * 1000));
+        candidate = addMin(windowStart, steps * intervalMinutes);
+      }
+
+      if (candidate <= windowEnd && candidate >= cursor) {
+        if (until && candidate > until) return null;
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  function computeNextFixedReminderTime(todo, fromDate = new Date()) {
+    const plan = todo.reminderPlan;
+    const clock = parsePlanClock(plan.time);
+    if (!clock) return null;
+    const until = (plan.until || todo.recurrenceEnd) ? new Date(plan.until || todo.recurrenceEnd) : null;
+
+    for (let i = 0; i < 370; i++) {
+      const day = addDays(fromDate, i);
+      if (plan.weekdaysOnly && !isWeekday(day)) continue;
+      const candidate = new Date(day);
+      candidate.setHours(clock.hour, clock.minute, 0, 0);
+      if (candidate <= fromDate) continue;
+      if (until && candidate > until) return null;
+      return candidate;
+    }
+    return null;
+  }
+
+  function parsePlanClock(value) {
+    const m = String(value || '').match(/^(\d{2}):(\d{2})$/);
+    if (!m) return null;
+    const hour = Number(m[1]);
+    const minute = Number(m[2]);
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    return { hour, minute, minutesOfDay: hour * 60 + minute };
+  }
+
+  function isWeekday(date) {
+    const day = date.getDay();
+    return day >= 1 && day <= 5;
+  }
+
+  function addMin(date, minutes) { const d = new Date(date); d.setMinutes(d.getMinutes() + minutes); return d; }
+  function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n); return d; }
+  function isSameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+
+  return {
+    requestPermission,
+    ensurePermission,
+    suggestReminderTime,
+    computeNextReminderTime,
+    formatReminderPlan,
+    formatReminderTime,
+    scheduleReminder,
+    cancelReminder,
+    rescheduleAll,
+    hasReminder,
+    getReminderAt,
+    setReminderStyle,
+    showNotification,
+    playSound,
+    _fireReminder: fireReminder,
+    _playSound: playSound,
+    _handleRecurrence: handleRecurrence,
+  };
+})();
+
+
+// ===================== APP CONTROLLER =====================
+
+const App = (() => {
+  // State
+  let todos = [];
+  let currentFilter = 'all';
+  let theme = 'light';
+  let deferredPrompt = null;
+  let currentReminderTodo = null; // track which todo triggered the reminder modal
+
+  // DOM refs
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
+
+  const $form      = $('#todoForm');
+  const $input     = $('#todoInput');
+  const $list      = $('#todoList');
+  const $count     = $('#taskCount');
+  const $clear     = $('#clearCompleted');
+  const $exportHistory = $('#exportHistory');
+  const $filters   = $('.filters');
+  const $themeBtn  = $('#themeBtn');
+  const $preview   = $('#analysisPreview');
+  const $previewDot = $('#previewDot');
+  const $previewLabel = $('#previewLabel');
+  const $previewDetail = $('#previewDetail');
+  const $installBanner = $('#installBanner');
+  const $installBtn    = $('#installBtn');
+  const $installDismiss = $('#installDismiss');
+  const $testBtn = $('#testBtn');
+  const $settingsBtn = $('#settingsBtn');
+  const $settingsModal = $('#settingsModal');
+  const $reminderStyleSelect = $('#reminderStyleSelect');
+  const $aiToggle = $('#aiToggle');
+  const $aiConfigSection = $('#aiConfigSection');
+  const $aiProvider = $('#aiProvider');
+  const $aiKey = $('#aiKey');
+  const $aiEndpoint = $('#aiEndpoint');
+  const $aiModel = $('#aiModel');
+  const $statusMsg = $('#statusMsg');
+  const $btnTestAI = $('#btnTestAI');
+  const $btnSaveSettings = $('#btnSaveSettings');
+  const $btnCancelSettings = $('#btnCancelSettings');
+  const $reminderModal = $('#reminderModal');
+  const $reminderText = $('#reminderText');
+  const $reminderMeta = $('#reminderMeta');
+  const $btnDoneReminder = $('#btnDoneReminder');
+  const $btnSnooze = $('#btnSnooze');
+  const $btnCloseReminder = $('#btnCloseReminder');
+
+  // AI config state (loaded from DB on init)
+  let aiConfig = { enabled: false, provider: 'deepseek', hasKey: false, endpoint: '', model: '' };
+  let reminderStyle = 'default';
+
+  const statQuick    = $('#statQuick');
+  const statPlanning = $('#statPlanning');
+  const statSystem   = $('#statSystem');
+
+  /* --- Init --- */
+  async function init() {
+    await TodoDB.open();
+    todos = await TodoDB.getAll();
+
+    // Migrate from old localStorage if needed
+    if (todos.length === 0) {
+      const migrated = await migrateFromLocalStorage();
+      if (migrated.length > 0) {
+        todos = migrated;
+        await TodoDB.putAll(todos);
+        toast(`已迁移 ${migrated.length} 条旧数据`);
+      }
+    }
+
+    // Load theme
+    const savedTheme = await TodoDB.getMeta('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    theme = savedTheme || (prefersDark ? 'dark' : 'light');
+    applyTheme(theme);
+
+    reminderStyle = normalizeReminderStyle(await TodoDB.getMeta('reminderStyle'));
+    ReminderManager.setReminderStyle(reminderStyle);
+    $reminderStyleSelect.value = reminderStyle;
+
+    // Check install banner (web only — not needed in Electron)
+    const isElectron = window.electronAPI?.isElectron ? await window.electronAPI.isElectron() : false;
+    if (isElectron && $installBanner) {
+      $installBanner.style.display = 'none';
+    } else if (!isElectron) {
+      const bannerDismissed = await TodoDB.getMeta('installBannerDismissed');
+      if (!bannerDismissed) {
+        setTimeout(() => { if ($installBanner) $installBanner.classList.add('show'); }, 60000);
+      }
+      // Only try beforeinstallprompt in web context
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+      });
+    }
+
+    bindEvents();
+    render();
+    $input.focus();
+    toast('v3 · 循环提醒已就绪');
+
+    // Expose for notification click handler
+    window.__getTodos = () => todos;
+
+    // Re-schedule pending reminders
+    ReminderManager.rescheduleAll(todos);
+
+    // Electron: listen for reminder-fired from main process
+    if (window.electronAPI?.onReminderFired) {
+      window.electronAPI.onReminderFired((todo) => {
+        const live = todos.find(t => t.id === todo.id);
+        if (!live || live.done) return;
+
+        // Snooze: re-schedule for 10 minutes
+        if (todo._snooze) {
+          const snoozeTime = new Date(Date.now() + 10 * 60 * 1000);
+          ReminderManager.scheduleReminder(live, snoozeTime);
+          toast('⏰ 10 分钟后再提醒');
+          return;
+        }
+
+        if (window._showReminderModal) window._showReminderModal(live);
+        // Play sound
+        try { ReminderManager._playSound(); } catch(e) {}
+        // Handle recurrence
+        ReminderManager._handleRecurrence(live);
+      });
+    }
+    // Request notification permission on first meaningful interaction
+    setTimeout(() => {
+      if (todos.some(t => t.reminderAt)) {
+        ReminderManager.ensurePermission();
+      }
+    }, 5000);
+
+    // Electron: re-sync timers when system wakes from sleep
+    if (window.electronAPI?.onSystemResume) {
+      window.electronAPI.onSystemResume(() => {
+        ReminderManager.rescheduleAll(todos);
+      });
+    }
+
+    // Electron: listen for notification "done" button
+    if (window.electronAPI?.onNotifMarkDone) {
+      window.electronAPI.onNotifMarkDone((todoId) => {
+        const t = todos.find(x => x.id === todoId);
+        if (t) { markTodoDone(t, true); TodoDB.put(t); render(); toast('✅ 已完成'); }
+      });
+    }
+
+    // Register SW (skip in Electron — we don't need browser SW caching)
+    if ('serviceWorker' in navigator && !window.electronAPI?.isElectron) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+    document.documentElement.dataset.appReady = 'true';
+  }
+
+  async function migrateFromLocalStorage() {
+    try {
+      const raw = localStorage.getItem('todo_app_data');
+      if (!raw) return [];
+      const old = JSON.parse(raw);
+      return old.map(t => ({
+        id: t.id,
+        text: t.text,
+        done: t.done || false,
+        completedAt: t.completedAt || null,
+        rawText: t.text,
+        createdAt: t.id,
+        category: 'quick',
+        confidence: 'medium',
+        dueDate: null,
+        priority: null,
+        timeBlock: null,
+        tags: [],
+        subtasks: [],
+        suggestions: [],
+        reminderAt: null,
+        recurrence: null,
+        recurrenceEnd: null,
+      recurrenceInterval: 1,
+      reminderPlan: t.reminderPlan || null,
+        categoryConfirmed: false,
+        tagsConfirmed: false,
+        acceptedSuggestions: [],
+      }));
+    } catch (_) { return []; }
+  }
+
+  /* --- Theme --- */
+  function applyTheme(t) {
+    theme = t;
+    document.documentElement.setAttribute('data-theme', t);
+    $themeBtn.textContent = t === 'dark' ? '☀️' : '🌙';
+    TodoDB.setMeta('theme', t);
+  }
+
+  function toggleTheme() {
+    applyTheme(theme === 'dark' ? 'light' : 'dark');
+  }
+
+  function normalizeReminderStyle(value) {
+    return ['default', 'pink-bubble', 'lavender-bubble'].includes(value) ? value : 'default';
+  }
+
+  /* --- AI Settings --- */
+  async function loadAIConfig() {
+    const saved = await TodoDB.getMeta('aiConfig');
+    if (saved) {
+      aiConfig = { ...aiConfig, ...saved };
+    }
+    // Electron keeps credentials encrypted in the main process. Migrate a legacy
+    // IndexedDB key once, then immediately remove it from renderer storage.
+    if (window.electronAPI?.getAIConfig) {
+      let secure = await window.electronAPI.getAIConfig();
+      if (saved?.key) {
+        try {
+          await window.electronAPI.saveAIConfig({ ...saved, key: saved.key });
+          delete aiConfig.key;
+          aiConfig.hasKey = true;
+          await TodoDB.setMeta('aiConfig', { ...aiConfig, key: undefined });
+          secure = await window.electronAPI.getAIConfig();
+        } catch (error) {
+          delete aiConfig.key;
+          await TodoDB.setMeta('aiConfig', { ...aiConfig, key: undefined });
+          toast(`⚠️ 旧 AI Key 未迁移：${error.message}`);
+        }
+      }
+      aiConfig = { ...aiConfig, ...secure, hasKey: secure.hasKey || aiConfig.hasKey };
+    }
+    $aiToggle.checked = aiConfig.enabled;
+    $aiConfigSection.classList.toggle('show', aiConfig.enabled);
+    $btnTestAI.style.display = aiConfig.enabled ? '' : 'none';
+    if (aiConfig.provider) $aiProvider.value = aiConfig.provider;
+    $aiKey.value = '';
+    $aiKey.placeholder = aiConfig.hasKey ? '已安全保存（留空表示不修改）' : 'sk-...';
+    if (aiConfig.endpoint) $aiEndpoint.value = aiConfig.endpoint;
+    else $aiEndpoint.value = aiConfig.provider === 'deepseek' ? 'https://api.deepseek.com/v1/chat/completions' : '';
+    if (aiConfig.model) $aiModel.value = aiConfig.model;
+    else $aiModel.value = aiConfig.provider === 'deepseek' ? 'deepseek-chat' : '';
+  }
+
+  async function saveAIConfig() {
+    reminderStyle = normalizeReminderStyle($reminderStyleSelect.value);
+    ReminderManager.setReminderStyle(reminderStyle);
+    await TodoDB.setMeta('reminderStyle', reminderStyle);
+
+    aiConfig.enabled = $aiToggle.checked;
+    aiConfig.provider = $aiProvider.value;
+    const enteredKey = $aiKey.value.trim();
+    aiConfig.endpoint = $aiEndpoint.value;
+    aiConfig.model = $aiModel.value;
+
+    if (window.electronAPI?.saveAIConfig) {
+      const result = await window.electronAPI.saveAIConfig({ ...aiConfig, key: enteredKey });
+      aiConfig.hasKey = result.hasKey;
+    } else {
+      // Web-only mode cannot safely persist an API credential.
+      aiConfig.hasKey = Boolean(enteredKey);
+    }
+    await TodoDB.setMeta('aiConfig', { ...aiConfig, key: undefined });
+    $aiKey.value = '';
+    $settingsModal.classList.remove('show');
+    const status = aiConfig.enabled ? 'AI 已启用' : '已切换为离线模式';
+    toast(`⚙️ ${status}`);
+  }
+
+  async function testAIConnection() {
+    const endpoint = $aiEndpoint.value || aiConfig.endpoint;
+    const key = $aiKey.value.trim();
+    if (!key && !aiConfig.hasKey) { $statusMsg.className = 'status-msg err'; $statusMsg.textContent = '请先填入 API Key'; return; }
+    $statusMsg.className = 'status-msg'; $statusMsg.textContent = '测试中…';
+    try {
+      if (!window.electronAPI?.testAI) throw new Error('AI 连接测试仅支持桌面版');
+      const res = await window.electronAPI.testAI({ endpoint, key, model: $aiModel.value || 'deepseek-chat' });
+      if (res.success) {
+        $statusMsg.className = 'status-msg ok'; $statusMsg.textContent = '✅ 连接成功！API 可用';
+      } else {
+        $statusMsg.className = 'status-msg err'; $statusMsg.textContent = '❌ 连接失败';
+      }
+    } catch (e) {
+      $statusMsg.className = 'status-msg err'; $statusMsg.textContent = `❌ 网络错误: ${e.message.substring(0, 60)}`;
+    }
+  }
+
+  function isAIEnabled() { return aiConfig.enabled && aiConfig.hasKey; }
+
+  /* --- Live preview (while typing) --- */
+  let previewTimer = null;
+  function updatePreview() {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(() => {
+      const text = $input.value.trim();
+      if (!text || text.length < 2) {
+        $preview.classList.remove('show');
+        return;
+      }
+      const result = Classifier.classify(text);
+      const ext = Extractor.extract(text, result.category);
+
+      $previewDot.className = 'dot ' + result.category;
+      $previewLabel.className = 'label ' + result.category;
+
+      const catNames = { quick: '碎片', planning: '规划', system: '项目' };
+      $previewLabel.textContent = result.category === 'quick' ? '🏃 碎片记录'
+                                : result.category === 'planning' ? '📅 日常规划'
+                                : '🏗️ 系统项目';
+
+      let detail = '';
+      if (ext.dueDate) detail += ` 📅${formatDate(ext.dueDate)}`;
+      if (ext.priority) detail += ` 🚩${ext.priority === 'high' ? '高优先' : ext.priority === 'medium' ? '中优先' : '低优先'}`;
+      if (ext.timeBlock) {
+        const bn = { morning:'上午', noon:'中午', afternoon:'下午', evening:'傍晚', night:'晚上' };
+        detail += ` ⏰${bn[ext.timeBlock]}`;
+      }
+      if (ext.tags.length > 0) detail += ` 🏷️${ext.tags.join(',')}`;
+      if (result.confidence === 'low') detail += ' (置信度较低)';
+
+      $previewDetail.textContent = detail;
+      $preview.classList.add('show');
+    }, 200);
+  }
+
+  function formatDate(d) {
+    const now = new Date();
+    const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
+    const dayAfter = new Date(now); dayAfter.setDate(dayAfter.getDate() + 2);
+
+    const isToday = now.toDateString() === d.toDateString();
+    const isTomorrow = tomorrow.toDateString() === d.toDateString();
+    const isDayAfter = dayAfter.toDateString() === d.toDateString();
+
+    const timeStr = d.getHours() > 0 || d.getMinutes() > 0
+      ? `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+      : '';
+
+    if (isToday && timeStr)     return `今天 ${timeStr}`;
+    if (isToday)                return '今天';
+    if (isTomorrow && timeStr)  return `明天 ${timeStr}`;
+    if (isTomorrow)             return '明天';
+    if (isDayAfter && timeStr)  return `后天 ${timeStr}`;
+    if (isDayAfter)             return '后天';
+
+    const weekNames = ['周日','周一','周二','周三','周四','周五','周六'];
+    const dateStr = `${d.getMonth()+1}/${d.getDate()}`;
+    return `${dateStr} ${weekNames[d.getDay()]}${timeStr ? ' ' + timeStr : ''}`;
+  }
+
+  /* --- Add todo --- */
+  function addTodo(text) {
+    const trimmed = text.trim();
+    if (!trimmed) { toast('⚠️ 请输入内容'); return; }
+
+    const result = Classifier.classify(trimmed);
+    const ext = Extractor.extract(trimmed, result.category);
+    const now = Date.now();
+
+    const todo = {
+      id: now,
+      rawText: trimmed,
+      title: ext.title,
+      text: trimmed,
+      done: false,
+      createdAt: now,
+      category: result.category,
+      confidence: result.confidence,
+      dueDate: ext.dueDate ? ext.dueDate.toISOString() : null,
+      priority: ext.priority,
+      timeBlock: ext.timeBlock,
+      tags: ext.tags,
+      subtasks: ext.subtaskCandidates.map((t, i) => ({ id: now + i + 1, text: t, done: false })),
+      estimatedMinutes: ext.estimatedMinutes,
+      recurrence: ext.recurrence,
+      recurrenceEnd: ext.recurrenceEnd,
+      recurrenceInterval: ext.recurrenceInterval,
+      reminderPlan: ext.reminderPlan,
+      reminderAt: null,
+      completedAt: null,
+      suggestions: [],
+      categoryConfirmed: result.confidence === 'high',
+      tagsConfirmed: false,
+      acceptedSuggestions: [],
+    };
+
+    // AI enhancement: if enabled, confidence low, and Electron available
+    if (isAIEnabled() && result.confidence === 'low' && window.electronAPI?.classifyWithAI) {
+      todo._aiPending = true;
+      // Fire-and-forget: AI runs async, updates todo when done
+      (async () => {
+        try {
+          const aiResult = await window.electronAPI.classifyWithAI(trimmed, result.category);
+          if (aiResult && !aiResult.error && aiResult.category) {
+            todo.category = aiResult.category;
+            todo.confidence = 'high';
+            todo.categoryConfirmed = true;
+            // If AI suggests subtasks, add them
+            if (aiResult.subtasks && aiResult.subtasks.length > 0) {
+              todo.subtasks = aiResult.subtasks.map((t, i) => ({ id: now + i + 100, text: t, done: false }));
+            }
+            // Re-generate suggestions with AI-enhanced classification
+            todo.suggestions = Suggestions.generate(todo);
+            TodoDB.put(todo);
+            render();
+            toast('🤖 AI 已优化分类');
+          }
+        } catch (_) { /* AI failed silently — keep rule-based result */ }
+        delete todo._aiPending;
+      })();
+    }
+
+    // Pre-generate suggestions
+    todo.suggestions = Suggestions.generate(todo);
+
+    todos.unshift(todo);
+    TodoDB.put(todo);
+    autoStartReminder(todo);
+    $input.value = '';
+    $preview.classList.remove('show');
+    render();
+    $input.focus();
+
+    // Toast if low confidence
+    if (result.confidence === 'low') {
+      setTimeout(() => toast('分类不太确定？点击卡片可以切换类型'), 500);
+    }
+  }
+
+  async function autoStartReminder(t) {
+    const raw = t.rawText || t.text || '';
+    const shouldAutoStart = Boolean(
+      t.reminderPlan ||
+      ((t.dueDate || t.recurrence) && /提醒|别忘了?|记住/.test(raw))
+    );
+    if (!shouldAutoStart || t.done) return;
+
+    try {
+      if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        await Notification.requestPermission();
+      }
+      const reminderTime = ReminderManager.suggestReminderTime(t);
+      if (!reminderTime) {
+        t.reminderAt = null;
+        await TodoDB.put(t);
+        return;
+      }
+      await ReminderManager.scheduleReminder(t, reminderTime);
+      t.suggestions = (t.suggestions || []).filter(s => !['start-recurring', 'set-reminder'].includes(s.id));
+      await TodoDB.put(t);
+      toast(`🔔 已自动开始提醒 — ${ReminderManager.formatReminderTime(reminderTime)}`);
+      render();
+    } catch (e) {
+      toast(`⚠️ 提醒启动失败：${String(e.message || e).substring(0, 40)}`);
+    }
+  }
+
+  function markTodoDone(t, done) {
+    t.done = Boolean(done);
+    t.completedAt = t.done ? (t.completedAt || Date.now()) : null;
+  }
+
+  /* --- Actions --- */
+  function toggleDone(id) {
+    const t = todos.find(x => x.id === id);
+    if (!t) return;
+    markTodoDone(t, !t.done);
+    // Cancel reminder if completing
+    if (t.done && t.reminderAt) {
+      ReminderManager.cancelReminder(id);
+      t.reminderAt = null;
+    }
+    // Auto-complete subtasks
+    if (t.done && t.subtasks) t.subtasks.forEach(s => s.done = true);
+    TodoDB.put(t);
+    render();
+  }
+
+  function deleteTodo(id) {
+    // Cancel reminder
+    ReminderManager.cancelReminder(id);
+    const $card = $list.querySelector(`[data-id="${id}"]`);
+    if ($card) {
+      $card.classList.add('removing');
+      $card.addEventListener('animationend', () => {
+        todos = todos.filter(t => t.id !== id);
+        TodoDB.remove(id);
+        render();
+      }, { once: true });
+    } else {
+      todos = todos.filter(t => t.id !== id);
+      TodoDB.remove(id);
+      render();
+    }
+  }
+
+  function updateText(id, newText) {
+    const trimmed = newText.trim();
+    const t = todos.find(x => x.id === id);
+    if (!t) return;
+    if (!trimmed) { deleteTodo(id); return; }
+    // Re-analyze if text changed significantly
+    if (trimmed !== t.rawText) {
+      t.rawText = trimmed;
+      t.text = trimmed;
+      const result = Classifier.classify(trimmed);
+      const ext = Extractor.extract(trimmed, result.category);
+      t.category = result.category;
+      t.confidence = result.confidence;
+      t.dueDate = ext.dueDate ? ext.dueDate.toISOString() : null;
+      t.priority = ext.priority;
+      t.timeBlock = ext.timeBlock;
+      t.tags = ext.tags;
+      t.subtasks = ext.subtaskCandidates.map((txt, i) => ({ id: Date.now() + i + 1, text: txt, done: false }));
+      t.recurrence = ext.recurrence;
+      t.recurrenceEnd = ext.recurrenceEnd;
+      t.recurrenceInterval = ext.recurrenceInterval;
+      t.reminderPlan = ext.reminderPlan;
+      t.categoryConfirmed = result.confidence === 'high';
+      t.suggestions = Suggestions.generate(t);
+      autoStartReminder(t);
+    } else {
+      t.text = trimmed;
+    }
+    TodoDB.put(t);
+    render();
+  }
+
+  function changeCategory(id, newCat) {
+    const t = todos.find(x => x.id === id);
+    if (!t) return;
+    t.category = newCat;
+    t.confidence = 'high';
+    t.categoryConfirmed = true;
+    // Re-extract and re-suggest
+    const ext = Extractor.extract(t.rawText, newCat);
+    t.dueDate = ext.dueDate ? ext.dueDate.toISOString() : null;
+    t.priority = ext.priority;
+    t.timeBlock = ext.timeBlock;
+    t.tags = ext.tags;
+    t.subtasks = ext.subtaskCandidates.map((txt, i) => ({ id: Date.now() + i + 1, text: txt, done: false }));
+    t.recurrence = ext.recurrence;
+    t.recurrenceEnd = ext.recurrenceEnd;
+    t.recurrenceInterval = ext.recurrenceInterval;
+    t.reminderPlan = ext.reminderPlan;
+    t.suggestions = Suggestions.generate(t);
+    autoStartReminder(t);
+    TodoDB.put(t);
+    render();
+    toast('分类已更新');
+  }
+
+  function acceptSuggestion(id, sugId, action) {
+    const t = todos.find(x => x.id === id);
+    if (!t) return;
+    t.acceptedSuggestions.push(sugId);
+
+    switch (action) {
+      case 'set_due':
+        if (t.dueDate) toast(`截止日期已确认：${formatDate(new Date(t.dueDate))}`);
+        break;
+      case 'set_timeblock':
+        toast(`已记录时间段`);
+        break;
+      case 'set_priority:high':
+        t.priority = 'high';
+        toast('优先级已设为"高"');
+        break;
+      case 'set_priority:medium':
+        t.priority = 'medium';
+        toast('优先级已设为"中"');
+        break;
+      case 'set_priority:low':
+        t.priority = 'low';
+        toast('优先级已设为"低"');
+        break;
+      case 'create_subtasks':
+        // Subtasks already created during extraction
+        toast(`已创建 ${t.subtasks.length} 个子任务`);
+        break;
+      case 'confirm_tags':
+        t.tagsConfirmed = true;
+        toast(`标签已确认：${t.tags.join('、')}`);
+        break;
+      case 'do_now':
+      markTodoDone(t, true);
+      toast('👍 已完成！');
+        break;
+      case 'start_recurring':
+        // Start recurring reminder immediately (first fire in 1 min)
+        (async () => {
+          try {
+            if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+              await Notification.requestPermission();
+            }
+            const now = new Date();
+            const firstReminder = new Date(now.getTime() + 60 * 1000); // 1 minute from now
+            await ReminderManager.scheduleReminder(t, firstReminder);
+            t.suggestions = t.suggestions.filter(s => s.id !== sugId);
+            await TodoDB.put(t);
+            const recNames = { minutely: '每分钟', hourly: '每小时', daily: '每天', weekly: '每周' };
+            toast(`🔄 已开始${recNames[t.recurrence] || ''}提醒`);
+            render();
+          } catch (e) {
+            toast(`⚠️ 提醒启动失败：${String(e.message || e).substring(0, 60)}`);
+          }
+        })();
+        return;
+      case 'set_reminder':
+        (async () => {
+          // Request notification permission
+          if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+            await Notification.requestPermission();
+          }
+          const reminderTime = ReminderManager.suggestReminderTime(t);
+          await ReminderManager.scheduleReminder(t, reminderTime);
+          t.suggestions = t.suggestions.filter(s => s.id !== sugId);
+          TodoDB.put(t);
+          toast(`🔔 已设置提醒 — ${ReminderManager.formatReminderTime(reminderTime)}`);
+          render();
+        })();
+        return; // async — exit early, callback handles render
+      case 'do_now':
+      default:
+        break;
+    }
+
+    // Remove accepted suggestion from list
+    t.suggestions = t.suggestions.filter(s => s.id !== sugId);
+    TodoDB.put(t);
+    render();
+  }
+
+  function dismissSuggestion(id, sugId) {
+    const t = todos.find(x => x.id === id);
+    if (!t) return;
+    t.suggestions = t.suggestions.filter(s => s.id !== sugId);
+    TodoDB.put(t);
+    render();
+  }
+
+  function toggleSubtask(todoId, subId) {
+    const t = todos.find(x => x.id === todoId);
+    if (!t) return;
+    const sub = t.subtasks.find(s => s.id === subId);
+    if (!sub) return;
+    sub.done = !sub.done;
+    TodoDB.put(t);
+    render();
+  }
+
+  function addFirstStep(todoId) {
+    const t = todos.find(x => x.id === todoId);
+    if (!t) return;
+    const stepId = Date.now();
+    t.subtasks.push({ id: stepId, text: '第一步：明确目标', done: false });
+    t.suggestions = t.suggestions.filter(s => s.id !== 'add_first_step');
+    TodoDB.put(t);
+    render();
+    // Focus the new subtask for editing
+    setTimeout(() => {
+      const $subText = $list.querySelector(`[data-sub-id="${stepId}"] .subtask-text`);
+      if ($subText) {
+        $subText.contentEditable = 'true';
+        $subText.focus();
+        document.getSelection().selectAllChildren($subText);
+      }
+    }, 300);
+  }
+
+  /* --- Reminder modal --- */
+  // Expose for cross-module access
+  window._showReminderModal = function(todo) {
+    currentReminderTodo = todo;
+    const popup = $reminderModal.querySelector('.reminder-popup');
+    popup.classList.remove('bubble-style', 'bubble-pink', 'bubble-lavender');
+    if (reminderStyle === 'pink-bubble') popup.classList.add('bubble-style', 'bubble-pink');
+    if (reminderStyle === 'lavender-bubble') popup.classList.add('bubble-style', 'bubble-lavender');
+    // Use generated title, fall back to text
+    const title = todo.title && todo.title !== todo.text ? todo.title : todo.text;
+    document.querySelector('#reminderModal h2').textContent = title;
+    $reminderText.textContent = '';
+    $reminderMeta.textContent = '';
+    $btnDoneReminder.hidden = !shouldShowReminderDoneButton(todo);
+    $reminderModal.classList.add('show');
+  };
+
+  function shouldShowReminderDoneButton(todo) {
+    if (!todo) return false;
+    if (!todo.recurrence && !todo.reminderPlan) return true;
+    return isFinalReminderOccurrence(todo);
+  }
+
+  function isFinalReminderOccurrence(todo) {
+    if (!todo.recurrenceEnd && !todo.reminderPlan?.until) return false;
+    const reminderAt = todo.reminderAt ? new Date(todo.reminderAt) : new Date();
+    const afterCurrent = new Date(reminderAt.getTime() + 1000);
+
+    if (todo.reminderPlan) {
+      return !ReminderManager.computeNextReminderTime(todo, afterCurrent);
+    }
+
+    const next = getNextClassicRecurrenceTime(todo, afterCurrent);
+    if (!next) return true;
+    return todo.recurrenceEnd ? next > new Date(todo.recurrenceEnd) : false;
+  }
+
+  function getNextClassicRecurrenceTime(todo, fromDate) {
+    const interval = Math.max(1, Number(todo.recurrenceInterval) || 1);
+    const last = todo.reminderAt ? new Date(todo.reminderAt) : fromDate;
+    switch (todo.recurrence) {
+      case 'minutely': return addMinutesForApp(last, interval);
+      case 'hourly': return addMinutesForApp(last, interval * 60);
+      case 'daily': return addDaysForApp(last, interval);
+      case 'weekly': return addDaysForApp(last, interval * 7);
+      default: return null;
+    }
+  }
+
+  function addMinutesForApp(date, minutes) {
+    const d = new Date(date);
+    d.setMinutes(d.getMinutes() + minutes);
+    return d;
+  }
+
+  function addDaysForApp(date, days) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+  }
+
+  function showReminderModal(todo) {
+    window._showReminderModal(todo);
+  }
+
+  function clearCompleted() {
+    const completedIds = todos.filter(t => t.done).map(t => t.id);
+    if (!completedIds.length) return;
+    todos = todos.filter(t => !t.done);
+    completedIds.forEach(id => TodoDB.remove(id));
+    render();
+    toast(`已清除 ${completedIds.length} 项已完成任务`);
+  }
+
+  function exportHistory() {
+    const history = todos
+      .filter(t => t.done)
+      .slice()
+      .sort((a, b) => getCompletedTime(b) - getCompletedTime(a))
+      .map(t => ({
+        id: t.id,
+        title: t.title,
+        text: t.text,
+        category: t.category,
+        priority: t.priority,
+        createdAt: t.createdAt,
+        completedAt: t.completedAt || null,
+        reminderAt: t.reminderAt || null,
+        reminderPlan: t.reminderPlan || null,
+      }));
+    if (!history.length) { toast('暂无可导出的历史完成项'); return; }
+    const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `smart-todo-history-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast(`已导出 ${history.length} 条历史完成项`);
+  }
+
+  /* --- Filter --- */
+  function setFilter(filter) {
+    currentFilter = filter;
+    $$('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
+    render();
+  }
+
+  function getFilteredTodos() {
+    const visible = todos.filter(isVisibleInSmartTodo);
+    const source = currentFilter === 'completed' ? visible.filter(t => t.done) : visible;
+    let result;
+    switch (currentFilter) {
+      case 'active':    result = source.filter(t => !t.done); break;
+      case 'completed': result = source; break;
+      case 'quick':     result = source.filter(t => t.category === 'quick'); break;
+      case 'planning':  result = source.filter(t => t.category === 'planning'); break;
+      case 'system':    result = source.filter(t => t.category === 'system'); break;
+      default:          result = source; break;
+    }
+    return result.sort(compareTodosForDisplay);
+  }
+
+  function isVisibleInSmartTodo(t) {
+    if (!t.done) return true;
+    return Date.now() - getCompletedTime(t) < 3 * 24 * 60 * 60 * 1000;
+  }
+
+  function compareTodosForDisplay(a, b) {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    if (a.done) return getCompletedTime(b) - getCompletedTime(a);
+    const timeDiff = getDisplayTime(a) - getDisplayTime(b);
+    if (timeDiff !== 0) return timeDiff;
+    const priorityDiff = getPriorityRank(b.priority) - getPriorityRank(a.priority);
+    if (priorityDiff !== 0) return priorityDiff;
+    return Number(b.createdAt || b.id) - Number(a.createdAt || a.id);
+  }
+
+  function getDisplayTime(t) {
+    const candidates = [];
+    if (t.reminderAt) candidates.push(new Date(t.reminderAt).getTime());
+    if (t.dueDate) candidates.push(new Date(t.dueDate).getTime());
+    if (t.reminderPlan) {
+      const next = ReminderManager.computeNextReminderTime(t, new Date());
+      if (next) candidates.push(next.getTime());
+    }
+    const valid = candidates.filter(Number.isFinite);
+    return valid.length ? Math.min(...valid) : Number.MAX_SAFE_INTEGER;
+  }
+
+  function getPriorityRank(priority) {
+    return { high: 3, medium: 2, low: 1 }[priority] || 0;
+  }
+
+  function getCompletedTime(t) {
+    return Number(t.completedAt || t.updatedAt || t.createdAt || t.id || 0);
+  }
+
+  /* --- Render --- */
+  function render() {
+    const filtered = getFilteredTodos();
+    const activeCount = todos.filter(t => !t.done).length;
+
+    // Stats
+    statQuick.textContent    = todos.filter(t => t.category === 'quick' && !t.done).length;
+    statPlanning.textContent = todos.filter(t => t.category === 'planning' && !t.done).length;
+    statSystem.textContent   = todos.filter(t => t.category === 'system' && !t.done).length;
+    $count.textContent = `${activeCount} 项待办`;
+    $clear.style.visibility = todos.some(t => t.done) ? 'visible' : 'hidden';
+    $exportHistory.style.visibility = todos.some(t => t.done) ? 'visible' : 'hidden';
+
+    // Empty state
+    if (filtered.length === 0) {
+      const msgs = {
+        all:       { icon: '🎉', title: '空空如也', desc: '在上方输入你要做的事情试试看' },
+        quick:     { icon: '🏃', title: '没有碎片任务', desc: '买菜、取快递、回邮件……记下来就不怕忘' },
+        planning:  { icon: '📅', title: '没有规划任务', desc: '会议、截止日、约会……带时间的任务放这里' },
+        system:    { icon: '🏗️', title: '没有项目任务', desc: '多步骤的复杂任务会自动识别到这里' },
+        active:    { icon: '✅', title: '全部完成了！', desc: '干得漂亮，给自己一点奖励 🎉' },
+        completed: { icon: '📋', title: '还没有完成的任务', desc: '开始完成第一件事吧' },
+      };
+      const m = msgs[currentFilter] || msgs.all;
+      $list.innerHTML = `<li class="empty-state">
+        <span class="empty-icon">${m.icon}</span>
+        <div class="empty-title">${m.title}</div>
+        <div class="empty-desc">${m.desc}</div>
+      </li>`;
+      return;
+    }
+
+    const catNames = { quick: '碎片', planning: '规划', system: '项目' };
+    const catEmoji = { quick: '🏃', planning: '📅', system: '🏗️' };
+    const catClass = { quick: 'quick', planning: 'planning', system: 'system' };
+    const prioNames = { high: '高优先', medium: '中优先', low: '低优先' };
+    const prioClass = { high: 'pri-high', medium: 'pri-medium', low: 'pri-low' };
+    const timeBlockNames = { morning: '上午', noon: '中午', afternoon: '下午', evening: '傍晚', night: '晚上' };
+
+    $list.innerHTML = filtered.map(t => {
+      const dueDate = t.dueDate ? new Date(t.dueDate) : null;
+      const isOverdue = dueDate && dueDate < new Date() && !t.done;
+      const suggestHTML = renderSuggestions(t);
+      const confidenceHTML = (!t.categoryConfirmed && t.confidence === 'low')
+        ? renderConfidenceToggle(t) : '';
+
+      // Generate subtask HTML
+      let subtaskHTML = '';
+      if (t.subtasks && t.subtasks.length > 0) {
+        subtaskHTML = `<ul class="subtasks">${t.subtasks.map(s => `
+          <li class="subtask-item${s.done ? ' done' : ''}" data-sub-id="${s.id}">
+            <div class="sub-check"></div>
+            <span class="subtask-text" contenteditable="false">${escHTML(s.text)}</span>
+          </li>
+        `).join('')}</ul>`;
+      }
+
+      return `
+      <li class="todo-card${t.done ? ' done' : ''}" data-id="${t.id}">
+        <div class="card-main">
+          <div class="checkbox" role="checkbox" aria-checked="${t.done}" tabindex="0"></div>
+          <div class="card-body">
+            <span class="task-text" contenteditable="false">${escHTML(t.text)}</span>
+            <div class="card-meta">
+              <span class="meta-tag cat-badge ${catClass[t.category]}">${catEmoji[t.category]} ${catNames[t.category]}</span>
+              ${dueDate ? `<span class="meta-tag due-tag${isOverdue ? ' overdue' : ''}">📅 ${formatDate(dueDate)}${isOverdue ? ' ⚠️已过期' : ''}</span>` : ''}
+              ${t.priority ? `<span class="meta-tag ${prioClass[t.priority]}">🚩 ${prioNames[t.priority]}</span>` : ''}
+              ${t.timeBlock ? `<span class="meta-tag time-tag">⏰ ${timeBlockNames[t.timeBlock]}</span>` : ''}
+              ${t.tags.map(tag => `<span class="meta-tag tag-tag">#${tag}</span>`).join('')}
+              ${t.reminderAt ? `<span class="meta-tag time-tag" data-reminder-id="${t.id}" title="点击取消/修改提醒">🔔 ${ReminderManager.formatReminderTime(new Date(t.reminderAt))} · 点击取消</span>` : ''}
+              ${t.reminderPlan ? `<span class="meta-tag time-tag">🔄 ${escHTML(ReminderManager.formatReminderPlan(t.reminderPlan))}</span>` : ''}
+              ${!t.reminderPlan && t.recurrence ? `<span class="meta-tag time-tag">🔄 ${({minutely:'每分钟',hourly:'每小时',daily:'每天',weekly:'每周',custom:'自定义'})[t.recurrence] || t.recurrence}${t.recurrenceInterval > 1 ? '×'+t.recurrenceInterval : ''}</span>` : ''}
+              ${t.subtasks && t.subtasks.length > 0 ? `<span class="meta-tag tag-tag">📋 ${t.subtasks.filter(s=>s.done).length}/${t.subtasks.length} 子任务</span>` : ''}
+            </div>
+          </div>
+          <button class="delete-card-btn" title="删除">🗑</button>
+        </div>
+        ${confidenceHTML}
+        ${subtaskHTML}
+        ${suggestHTML}
+      </li>`;
+    }).join('');
+  }
+
+  function renderSuggestions(t) {
+    if (!t.suggestions || t.suggestions.length === 0) return '';
+    // Show only first 2 suggestions
+    const toShow = t.suggestions.slice(0, 2);
+    return toShow.map(s => `
+      <div class="suggestion-box show" data-sug-id="${s.id}">
+        <span class="sug-icon">${escHTML(s.icon)}</span>
+        <span class="sug-text">${escHTML(s.text)}</span>
+        <div class="sug-actions">
+          <button class="sug-btn sug-accept" data-action="${escAttr(s.action)}" data-sug-id="${escAttr(s.id)}">${escHTML(s.actionLabel)}</button>
+          <button class="sug-btn sug-dismiss" data-sug-id="${escAttr(s.id)}">忽略</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderConfidenceToggle(t) {
+    const cats = ['quick', 'planning', 'system'];
+    const names = { quick: '碎片', planning: '规划', system: '项目' };
+    const others = cats.filter(c => c !== t.category);
+    return `
+      <div class="confidence-toggle show">
+        <span>分类不确定？切换为：</span>
+        ${others.map(c => `<button class="conf-toggle-btn" data-change-cat="${c}">${names[c]}</button>`).join('')}
+      </div>
+    `;
+  }
+
+  function escHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function escAttr(value) {
+    return escHTML(String(value)).replace(/`/g, '&#96;');
+  }
+
+  /* --- Event binding --- */
+  function bindEvents() {
+    // Submit
+    $form.addEventListener('submit', e => {
+      e.preventDefault();
+      try {
+        addTodo($input.value);
+      } catch (err) {
+        console.error('addTodo error:', err);
+        toast('❌ 出错了：' + err.message);
+      }
+    });
+
+    // Live preview while typing
+    $input.addEventListener('input', updatePreview);
+
+    // Card interactions (click delegation)
+    $list.addEventListener('click', e => {
+      const $card = e.target.closest('.todo-card');
+      if (!$card) return;
+      const id = Number($card.dataset.id);
+
+      // Checkbox
+      if (e.target.closest('.checkbox') || e.target.closest('.sub-check')) {
+        // Sub-check
+        const $sub = e.target.closest('.subtask-item');
+        if ($sub) {
+          const subId = Number($sub.dataset.subId);
+          toggleSubtask(id, subId);
+          return;
+        }
+        toggleDone(id);
+        return;
+      }
+
+      // Delete
+      if (e.target.closest('.delete-card-btn')) {
+        deleteTodo(id);
+        return;
+      }
+
+      // Suggestion accept
+      if (e.target.closest('.sug-accept')) {
+        const $btn = e.target.closest('.sug-accept');
+        const sugId = $btn.dataset.sugId;
+        const action = $btn.dataset.action;
+
+        if (action === 'add_first_step') {
+          addFirstStep(id);
+          return;
+        }
+
+        acceptSuggestion(id, sugId, action);
+        return;
+      }
+
+      // Suggestion dismiss
+      if (e.target.closest('.sug-dismiss')) {
+        const sugId = e.target.closest('.sug-dismiss').dataset.sugId;
+        dismissSuggestion(id, sugId);
+        return;
+      }
+
+      // Reminder indicator click → cancel or change
+      if (e.target.closest('[data-reminder-id]')) {
+        e.preventDefault();
+        const rId = Number(e.target.closest('[data-reminder-id]').dataset.reminderId);
+        const t = todos.find(x => x.id === rId);
+        if (!t) return;
+        ReminderManager.cancelReminder(rId);
+        t.reminderAt = null;
+        TodoDB.put(t);
+        toast('🔕 提醒已取消');
+        render();
+        return;
+      }
+
+      // Confidence toggle
+      if (e.target.closest('.conf-toggle-btn')) {
+        const newCat = e.target.closest('.conf-toggle-btn').dataset.changeCat;
+        changeCategory(id, newCat);
+        return;
+      }
+    });
+
+    // Double-click to edit task text
+    $list.addEventListener('dblclick', e => {
+      const $text = e.target.closest('.task-text');
+      if (!$text || $text.contentEditable === 'true') return;
+      const $card = $text.closest('.todo-card');
+      const id = Number($card.dataset.id);
+
+      $text.contentEditable = 'true';
+      $text.focus();
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      const range = document.createRange();
+      range.selectNodeContents($text);
+      sel.addRange(range);
+    });
+
+    // Double-click to edit subtask text
+    $list.addEventListener('dblclick', e => {
+      const $text = e.target.closest('.subtask-text');
+      if (!$text || $text.contentEditable === 'true') return;
+      const $sub = $text.closest('.subtask-item');
+      const subId = Number($sub.dataset.subId);
+      const $card = $sub.closest('.todo-card');
+      const todoId = Number($card.dataset.id);
+
+      $text.contentEditable = 'true';
+      $text.focus();
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      const range = document.createRange();
+      range.selectNodeContents($text);
+      sel.addRange(range);
+
+      // Store for blur handler
+      $text._todoId = todoId;
+      $text._subId = subId;
+    });
+
+    // Finish editing task text on blur
+    $list.addEventListener('blur', e => {
+      const $text = e.target.closest('.task-text');
+      if ($text && $text.contentEditable === 'true') {
+        $text.contentEditable = 'false';
+        const $card = $text.closest('.todo-card');
+        if ($card) updateText(Number($card.dataset.id), $text.textContent);
+      }
+
+      // Subtask text
+      const $subText = e.target.closest('.subtask-text');
+      if ($subText && $subText.contentEditable === 'true') {
+        $subText.contentEditable = 'false';
+        const todoId = $subText._todoId;
+        const subId = $subText._subId;
+        if (todoId && subId) {
+          const t = todos.find(x => x.id === todoId);
+          if (t) {
+            const sub = t.subtasks.find(s => s.id === subId);
+            if (sub) {
+              const trimmed = $subText.textContent.trim();
+              if (trimmed) sub.text = trimmed;
+              else t.subtasks = t.subtasks.filter(s => s.id !== subId);
+              TodoDB.put(t);
+              render();
+            }
+          }
+        }
+      }
+    }, true);
+
+    // Keyboard: Enter to finish edit, Esc to cancel
+    $list.addEventListener('keydown', e => {
+      const $text = e.target.closest('.task-text, .subtask-text');
+      if (!$text || $text.contentEditable !== 'true') return;
+
+      if (e.key === 'Enter') { e.preventDefault(); $text.blur(); }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        $text.contentEditable = 'false';
+        render(); // Re-render to restore original text
+      }
+    });
+
+    // Keyboard: checkbox with space/enter
+    $list.addEventListener('keydown', e => {
+      const $cb = e.target.closest('.checkbox');
+      if (!$cb || (e.key !== 'Enter' && e.key !== ' ')) return;
+      e.preventDefault();
+      const $card = $cb.closest('.todo-card');
+      toggleDone(Number($card.dataset.id));
+    });
+
+    // Filters
+    $filters.addEventListener('click', e => {
+      const btn = e.target.closest('.filter-btn');
+      if (!btn) return;
+      setFilter(btn.dataset.filter);
+    });
+
+    // Clear completed
+    $clear.addEventListener('click', clearCompleted);
+    $exportHistory.addEventListener('click', exportHistory);
+
+    // Theme
+    $themeBtn.addEventListener('click', toggleTheme);
+
+    // Settings panel
+    loadAIConfig();
+    $settingsBtn.addEventListener('click', () => { $settingsModal.classList.add('show'); });
+    $btnCancelSettings.addEventListener('click', () => { $settingsModal.classList.remove('show'); });
+    $aiToggle.addEventListener('change', () => {
+      const on = $aiToggle.checked;
+      $aiConfigSection.classList.toggle('show', on);
+      $btnTestAI.style.display = on ? '' : 'none';
+    });
+    $btnSaveSettings.addEventListener('click', saveAIConfig);
+    $btnTestAI.addEventListener('click', testAIConnection);
+    // Close on overlay click
+    $settingsModal.addEventListener('click', (e) => {
+      if (e.target === $settingsModal) $settingsModal.classList.remove('show');
+    });
+
+    // Reminder modal buttons
+    $btnDoneReminder.addEventListener('click', () => {
+      if (currentReminderTodo) {
+        markTodoDone(currentReminderTodo, true);
+        TodoDB.put(currentReminderTodo);
+        toast('✅ 已完成');
+      }
+      $reminderModal.classList.remove('show');
+      currentReminderTodo = null;
+      render();
+    });
+    $btnSnooze.addEventListener('click', () => {
+      if (currentReminderTodo) {
+        const snoozeTime = new Date(Date.now() + 10 * 60 * 1000);
+        ReminderManager.scheduleReminder(currentReminderTodo, snoozeTime);
+        toast('⏰ 10 分钟后再提醒');
+      }
+      $reminderModal.classList.remove('show');
+      currentReminderTodo = null;
+      render();
+    });
+    $btnCloseReminder.addEventListener('click', () => {
+      $reminderModal.classList.remove('show');
+      currentReminderTodo = null;
+    });
+    $reminderModal.addEventListener('click', (e) => {
+      if (e.target === $reminderModal) {
+        $reminderModal.classList.remove('show');
+        currentReminderTodo = null;
+      }
+    });
+
+    // PWA install — try system prompt first, fall back to manual guide
+    $installBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const result = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+      } else {
+        // No beforeinstallprompt — show manual guide via toast
+        toast('💡 Chrome/Edge：点击地址栏右侧的安装图标 📥 即可安装到桌面');
+      }
+      $installBanner.classList.remove('show');
+      await TodoDB.setMeta('installBannerDismissed', true);
+    });
+    $installDismiss.addEventListener('click', async () => {
+      $installBanner.classList.remove('show');
+      await TodoDB.setMeta('installBannerDismissed', true);
+    });
+
+    // Test button
+    $testBtn.addEventListener('click', runTests);
+
+    // Keyboard shortcut: Ctrl+Enter to submit from anywhere
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        addTodo($input.value);
+      }
+    });
+  }
+
+  /* --- Test suite --- */
+  async function runTests() {
+    const cases = [
+      ['买牛奶', 'quick'], ['下班路上寄快递', 'quick'], ['给物业打电话问停车位', 'quick'],
+      ['明天下午3点开会', 'planning'], ['周五前提交周报', 'planning'], ['今天下班去健身房', 'planning'],
+      ['明天上午10点和客户电话沟通需求', 'planning'], ['下周一之前完成Q3数据分析报告', 'planning'],
+      ['重构用户认证模块', 'system'], ['准备年度总结PPT，需要收集数据、做图表、写演讲稿', 'system'],
+      ['整理书房，把书分类、不需要的处理掉、重新排列', 'system'],
+      ['学习Rust语言，看完官方教程前5章并做练习', 'system'],
+      ['还信用卡', 'quick'], ['取快递', 'quick'], ['明晚8点和朋友吃饭', 'planning'],
+      ['下周完成项目技术方案设计，涉及架构选型、接口定义、数据库设计', 'system'],
+      ['买周末露营的食材：牛肉、鸡翅、蔬菜、饮料、零食', 'quick'],
+      ['今天整理这周的工作笔记', 'planning'], ['紧急：服务器证书过期了，马上续期', 'planning'],
+      ['给团队分享上月踩过的坑，准备一个内部技术分享PPT', 'system'],
+      ['回复老板的邮件', 'quick'], ['明天去医院体检，记得空腹', 'planning'],
+      ['报名参加9月的技术大会', 'planning'], ['优化首页加载速度，目标从3秒降到1秒以内', 'system'],
+      ['交电费', 'quick'], ['预约牙医洗牙', 'quick'], ['下午4点面试候选人', 'planning'],
+      ['本周五之前和设计师对齐新版本UI规范', 'planning'],
+      ['制定团队下半年OKR，要和老板对齐、和每个成员沟通、输出文档', 'system'],
+      ['写一篇关于微服务架构的博客，需要结合项目实际案例', 'system'],
+    ];
+
+    let correct = 0;
+    const classificationErrors = [];
+    const errors = [];
+
+    cases.forEach(([text, expected]) => {
+      const result = Classifier.classify(text);
+      if (result.category === expected) {
+        correct++;
+      } else {
+        classificationErrors.push(`⚠️ "${text}" → 预期 ${expected}，实际 ${result.category} (${result.scores.quick}/${result.scores.planning}/${result.scores.system})`);
+      }
+    });
+
+    const reminderCases = [
+      ['每天9:30~18:00（工作日），每小时提醒我测试事项甲', '测试事项甲', 'time-window'],
+      ['每天9:30~18:00（工作日），每半小时提醒我测试事项乙', '测试事项乙', 'time-window'],
+      ['每天18:00（工作日），每小时提醒我测试事项丙', '测试事项丙', 'fixed-time'],
+      ['每天17:45（工作日），每小时提醒我测试事项丁', '测试事项丁', 'fixed-time'],
+    ];
+    reminderCases.forEach(([text, title, planType]) => {
+      const result = Extractor.extract(text, 'quick');
+      if (result.title !== title || result.reminderPlan?.type !== planType || !result.reminderPlan.weekdaysOnly) {
+        errors.push(`❌ 提醒解析失败：${text}`);
+      }
+    });
+
+    let ipcPassed = Boolean(window.electronAPI?.scheduleReminder && window.electronAPI?.cancelReminder);
+    if (window.electronAPI?.scheduleReminder && window.electronAPI?.cancelReminder) {
+      const testTodo = {
+        id: Number.MAX_SAFE_INTEGER - 1,
+        text: '页面提醒自检',
+        title: '页面提醒自检',
+        recurrence: 'minutely',
+        recurrenceInterval: 1,
+      };
+      try {
+        await ReminderManager.scheduleReminder(testTodo, new Date(Date.now() + 60 * 1000));
+        ReminderManager.cancelReminder(testTodo.id);
+        await TodoDB.remove(testTodo.id);
+      } catch (e) {
+        ipcPassed = false;
+        errors.push(`❌ Electron 提醒排程失败：${String(e.message || e).substring(0, 60)}`);
+      }
+    } else {
+      errors.push('❌ Electron 提醒接口未注入，排程自检未执行');
+    }
+
+    const pct = Math.round(correct / cases.length * 100);
+    const reminderPassed = reminderCases.length - errors.filter(e => e.includes('提醒解析')).length;
+    const classificationPassed = pct >= 80;
+    const allPassed = classificationPassed && errors.length === 0 && ipcPassed;
+    const msg = `${allPassed ? '✅ 页面自检通过' : '❌ 页面自检失败'}：分类 ${correct}/${cases.length}（${pct}%），提醒解析 ${reminderPassed}/${reminderCases.length}，排程 ${ipcPassed ? '通过' : '失败'}`;
+    toast(msg, 'test-result');
+
+    if (classificationErrors.length > 0) {
+      console.log('=== 分类偏差 ===');
+      classificationErrors.forEach(e => console.log(e));
+    }
+    if (errors.length > 0) {
+      console.log('=== 提醒自检错误 ===');
+      errors.forEach(e => console.log(e));
+    }
+    console.log(`=== 准确率: ${pct}% ===`);
+  }
+
+  return { init };
+})();
+
+// Boot
+document.addEventListener('DOMContentLoaded', () => {
+  App.init();
+});
+</script>
+</body>
+</html>

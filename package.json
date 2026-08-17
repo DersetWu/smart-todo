@@ -1,0 +1,60 @@
+{
+  "name": "smart-todo",
+  "version": "1.0.0",
+  "description": "智能待办事项 — 输入文字自动分类、提取日期、后台提醒",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "test": "node tests/app.test.js && node tests/electron-smoke.js",
+    "test:unit": "node tests/app.test.js",
+    "test:electron": "node tests/electron-smoke.js",
+    "build": "electron-builder --win",
+    "build:installer": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.smarttodo.app",
+    "productName": "Smart Todo",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "index.html",
+      "main.js",
+      "preload.js",
+      "notification.html",
+      "manifest.json",
+      "sw.js",
+      "assets/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "portable": {
+      "artifactName": "SmartTodo.exe"
+    },
+    "forceCodeSigning": false
+  },
+  "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^25.0.0"
+  }
+}

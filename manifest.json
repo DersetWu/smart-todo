@@ -1,0 +1,19 @@
+{
+  "name": "Smart Todo — 智能待办",
+  "short_name": "Smart Todo",
+  "description": "智能待办事项管理 — 输入文字自动分类、提取日期、给出建议",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f0f2f5",
+  "theme_color": "#6366f1",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><defs><linearGradient id=%22g%22 x1=%220%25%22 y1=%220%25%22 x2=%22100%25%22 y2=%22100%25%22><stop offset=%220%25%22 style=%22stop-color:%236366f1%22/><stop offset=%22100%25%22 style=%22stop-color:%238b5cf6%22/></linearGradient></defs><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22url(%23g)%22/><text x=%2250%22 y=%2270%22 font-size=%2260%22 text-anchor=%22middle%22>🧠</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
