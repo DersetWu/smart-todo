@@ -887,6 +887,7 @@ body {
 <!-- Toast container -->
 <div class="toast-container" id="toastContainer"></div>
 
+<script src="mobile-bridge.js"></script>
 <script>
 /* ===================================================================
    Smart Todo — 完整应用脚本
@@ -1675,6 +1676,9 @@ const ReminderManager = (() => {
 
   /* --- Notifications --- */
   async function requestPermission() {
+    if (window.MobileBridge?.isNative) {
+      return await window.MobileBridge.ensurePermission() ? 'granted' : 'denied';
+    }
     if (!('Notification' in window)) return 'denied';
     const result = await Notification.requestPermission();
     notificationPermission = result;
@@ -1682,6 +1686,7 @@ const ReminderManager = (() => {
   }
 
   async function ensurePermission() {
+    if (window.MobileBridge?.isNative) return window.MobileBridge.ensurePermission();
     // Electron: native notifications don't need browser permission
     if (window.electronAPI?.isElectron) return true;
     if (!('Notification' in window)) return false;
@@ -1693,6 +1698,9 @@ const ReminderManager = (() => {
   async function showNotification(todo) {
     const title = todo.title || todo.text || '到时间了';
     const body = '';
+
+    // Android already displayed the scheduled system notification.
+    if (window.MobileBridge?.isNative) return;
 
     // Prefer Electron native notification (works even when browser is hidden)
     if (window.electronAPI?.showNotification) {
@@ -1845,15 +1853,17 @@ const ReminderManager = (() => {
   // Prefer Electron main-process timers (Node.js, never throttled)
   // Fall back to renderer setTimeout for browser
   async function scheduleReminder(todo, reminderTime) {
-    cancelReminder(todo.id);
+    await cancelReminder(todo.id);
     todo.reminderStyle = reminderStyle;
 
     const now = new Date();
     const msUntil = reminderTime.getTime() - now.getTime();
     if (msUntil <= 0) return;
 
-    // Electron: use main process Node.js timer
-    if (window.electronAPI?.scheduleReminder) {
+    // Android: use native local notifications so reminders survive app closure.
+    if (window.MobileBridge?.isNative) {
+      await window.MobileBridge.scheduleReminder(todo, reminderTime);
+    } else if (window.electronAPI?.scheduleReminder) {
       await window.electronAPI.scheduleReminder(todo, reminderTime.toISOString());
     } else {
       // Browser fallback
@@ -1868,7 +1878,10 @@ const ReminderManager = (() => {
     return reminderTime;
   }
 
-  function cancelReminder(todoId) {
+  async function cancelReminder(todoId) {
+    if (window.MobileBridge?.isNative) {
+      await window.MobileBridge.cancelReminder(todoId);
+    }
     // Electron
     if (window.electronAPI?.cancelReminder) {
       window.electronAPI.cancelReminder(todoId);
@@ -1963,6 +1976,12 @@ const ReminderManager = (() => {
     // Electron: delegate to main process
     if (window.electronAPI?.rescheduleAll) {
       await window.electronAPI.rescheduleAll(normalizedTodos);
+      return;
+    }
+
+    // Android: rebuild native schedules from persisted todos.
+    if (window.MobileBridge?.isNative) {
+      await window.MobileBridge.rescheduleAll(normalizedTodos);
       return;
     }
 
@@ -2148,6 +2167,7 @@ const App = (() => {
   async function init() {
     await TodoDB.open();
     todos = await TodoDB.getAll();
+    await window.MobileBridge?.initialize?.();
 
     // Migrate from old localStorage if needed
     if (todos.length === 0) {
@@ -2169,11 +2189,12 @@ const App = (() => {
     ReminderManager.setReminderStyle(reminderStyle);
     $reminderStyleSelect.value = reminderStyle;
 
-    // Check install banner (web only — not needed in Electron)
+    // Check install banner (web only — not needed in Electron or Android)
     const isElectron = window.electronAPI?.isElectron ? await window.electronAPI.isElectron() : false;
-    if (isElectron && $installBanner) {
+    const isNativeMobile = Boolean(window.MobileBridge?.isNative);
+    if ((isElectron || isNativeMobile) && $installBanner) {
       $installBanner.style.display = 'none';
-    } else if (!isElectron) {
+    } else if (!isElectron && !isNativeMobile) {
       const bannerDismissed = await TodoDB.getMeta('installBannerDismissed');
       if (!bannerDismissed) {
         setTimeout(() => { if ($installBanner) $installBanner.classList.add('show'); }, 60000);
@@ -2217,6 +2238,19 @@ const App = (() => {
         ReminderManager._handleRecurrence(live);
       });
     }
+
+    // Android: respond when a scheduled notification arrives or is tapped.
+    let lastMobileReminder = { todoId: null, at: 0 };
+    window.addEventListener('mobile-reminder-fired', event => {
+      const todoId = event.detail?.todoId;
+      const now = Date.now();
+      if (lastMobileReminder.todoId === todoId && now - lastMobileReminder.at < 30000) return;
+      lastMobileReminder = { todoId, at: now };
+      const live = todos.find(t => String(t.id) === String(todoId));
+      if (!live || live.done) return;
+      ReminderManager._fireReminder(live);
+      render();
+    });
     // Request notification permission on first meaningful interaction
     setTimeout(() => {
       if (todos.some(t => t.reminderAt)) {
@@ -2239,8 +2273,8 @@ const App = (() => {
       });
     }
 
-    // Register SW (skip in Electron — we don't need browser SW caching)
-    if ('serviceWorker' in navigator && !window.electronAPI?.isElectron) {
+    // Register SW only in a real browser; native containers bundle their assets.
+    if ('serviceWorker' in navigator && !window.electronAPI?.isElectron && !window.MobileBridge?.isNative) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
     document.documentElement.dataset.appReady = 'true';
