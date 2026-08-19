@@ -1,0 +1,48 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'agent/**']
+    paths:
+      - 'android/**'
+      - 'assets/**'
+      - 'index.html'
+      - 'mobile-bridge.js'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/build-mobile-web.js'
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install dependencies
+        run: npm ci
+      - name: Test mobile reminder schedules
+        run: npm run test:unit
+      - name: Sync Android project
+        run: npm run mobile:sync
+      - name: Build installable debug APK
+        run: |
+          chmod +x android/gradlew
+          ./android/gradlew -p android assembleDebug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartTodo-Android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30

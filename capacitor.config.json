@@ -1,0 +1,13 @@
+{
+  "appId": "com.smarttodo.app",
+  "appName": "Smart Todo",
+  "webDir": "mobile-web",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "iconColor": "#6366f1"
+    }
+  }
+}

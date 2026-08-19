@@ -17,3 +17,12 @@ ai-config.json
 .review-baseline/
 .DS_Store
 Thumbs.db
+
+# Android build outputs and signing material
+mobile-web/
+android/.gradle/
+android/app/build/
+*.apk
+*.aab
+*.jks
+keystore.properties

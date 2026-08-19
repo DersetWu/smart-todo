@@ -42,3 +42,13 @@ npm run build
 
 - `SmartTodo.exe`：便携版，无需安装，可放在任意非 C 盘目录运行。
 - `Smart Todo Setup 1.0.0.exe`：安装版，安装过程中可手动选择目标目录。
+
+## Android APK
+
+Android 版本使用 Capacitor 封装，并通过系统本地通知保存后台提醒。需要 Node.js 22+、Android SDK 和 JDK 21：
+
+```powershell
+npm run build:android
+```
+
+APK 输出位置为 `android/app/build/outputs/apk/debug/app-debug.apk`。也可以在 GitHub Actions 中手动运行 `Build Android APK`，下载自动生成的 `SmartTodo-Android-debug` 构建产物。

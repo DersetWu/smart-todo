@@ -7,6 +7,7 @@ const CACHE_NAME = 'smart-todo-v3';
 const STATIC_ASSETS = [
   './',
   './index.html',
+  './mobile-bridge.js',
   './manifest.json',
 ];
 

@@ -6,11 +6,15 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "node tests/app.test.js && node tests/electron-smoke.js",
-    "test:unit": "node tests/app.test.js",
+    "test": "node tests/app.test.js && node tests/mobile-bridge.test.js && node tests/electron-smoke.js",
+    "test:unit": "node tests/app.test.js && node tests/mobile-bridge.test.js",
     "test:electron": "node tests/electron-smoke.js",
     "build": "electron-builder --win",
-    "build:installer": "electron-builder --win"
+    "build:installer": "electron-builder --win",
+    "build:mobile:web": "node scripts/build-mobile-web.js",
+    "mobile:sync": "npm run build:mobile:web && cap sync android",
+    "build:android": "npm run mobile:sync && cd android && gradlew.bat assembleDebug",
+    "build:android:ci": "npm run mobile:sync && ./android/gradlew -p android assembleDebug"
   },
   "build": {
     "appId": "com.smarttodo.app",
@@ -20,6 +24,7 @@
     },
     "files": [
       "index.html",
+      "mobile-bridge.js",
       "main.js",
       "preload.js",
       "notification.html",
@@ -54,7 +59,13 @@
     "forceCodeSigning": false
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
     "electron": "^43.2.0",
     "electron-builder": "^25.0.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/local-notifications": "^8.3.0"
   }
 }
