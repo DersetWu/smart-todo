@@ -4,6 +4,7 @@
   const native = Boolean(capacitor?.isNativePlatform?.() && plugin);
   const idCache = new Map();
   const storagePrefix = 'smartTodo.nativeReminderIds.';
+  const reminderChannelId = 'smart-todo-reminders-v2';
 
   function hashId(value) {
     const text = String(value);
@@ -59,7 +60,7 @@
       title: todo.title || todo.text || '到时间了',
       body: '',
       schedule: { ...schedule, allowWhileIdle: true },
-      channelId: 'smart-todo-reminders',
+      channelId: reminderChannelId,
       foreground: true,
       isExactNotification: true,
       extra: { todoId: todo.id, recurrenceEnd: todo.recurrenceEnd || todo.reminderPlan?.until || null },
@@ -165,7 +166,16 @@
   async function initialize() {
     if (!native) return;
     if (capacitor.getPlatform?.() === 'android' && plugin.createChannel) {
-      await plugin.createChannel({ id: 'smart-todo-reminders', name: '待办提醒', importance: 5, visibility: 1, vibration: true });
+      await plugin.createChannel({
+        id: reminderChannelId,
+        name: '醒目待办提醒',
+        description: '使用手机默认通知音，并伴随震动',
+        importance: 5,
+        visibility: 1,
+        vibration: true,
+        lights: true,
+        lightColor: '#6366F1',
+      });
     }
     await plugin.addListener('localNotificationReceived', dispatchReminder);
     await plugin.addListener('localNotificationActionPerformed', event => dispatchReminder(event.notification));

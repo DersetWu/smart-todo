@@ -5,14 +5,14 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 function loadBridge() {
-  const calls = { schedule: [], cancel: [] };
+  const calls = { schedule: [], cancel: [], createChannel: [] };
   const values = new Map();
   const plugin = {
     checkPermissions: async () => ({ display: 'granted' }),
     requestPermissions: async () => ({ display: 'granted' }),
     schedule: async options => { calls.schedule.push(options); return { notifications: options.notifications }; },
     cancel: async options => { calls.cancel.push(options); },
-    createChannel: async () => {},
+    createChannel: async options => { calls.createChannel.push(options); },
     addListener: async () => ({ remove: async () => {} }),
   };
   const window = {
@@ -32,6 +32,32 @@ function loadBridge() {
   vm.runInNewContext(source, { window, CustomEvent, Date, Map, Math, JSON, Number, String, Boolean, Array, Error });
   return { bridge: window.MobileBridge, calls };
 }
+
+test('Android reminders use the prominent system-sound notification channel', async () => {
+  const { bridge, calls } = loadBridge();
+  await bridge.initialize();
+  await bridge.scheduleReminder({ id: 'sound-channel', title: '测试事项' }, new Date(Date.now() + 60_000));
+
+  assert.deepEqual({ ...calls.createChannel[0] }, {
+    id: 'smart-todo-reminders-v2',
+    name: '醒目待办提醒',
+    description: '使用手机默认通知音，并伴随震动',
+    importance: 5,
+    visibility: 1,
+    vibration: true,
+    lights: true,
+    lightColor: '#6366F1',
+  });
+  assert.equal(calls.schedule[0].notifications[0].channelId, 'smart-todo-reminders-v2');
+
+  const activitySource = fs.readFileSync(
+    path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'java', 'com', 'smarttodo', 'app', 'MainActivity.java'),
+    'utf8',
+  );
+  assert.match(activitySource, /Settings\.System\.DEFAULT_NOTIFICATION_URI/);
+  assert.match(activitySource, /setVibrationPattern\(new long\[\] \{ 0, 300, 180, 700, 180, 300 \}\)/);
+  assert.match(activitySource, /IMPORTANCE_HIGH/);
+});
 
 test('Android fixed-time workday reminders preserve 18:00 and weekdays', async () => {
   const { bridge, calls } = loadBridge();
